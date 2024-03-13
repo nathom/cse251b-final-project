@@ -1,6 +1,0 @@
-avg max val: 64.0
-avg total sum: 236.0
-avg merge score: 748.0
-max vals: [64]
-total sums: [236]
-total merge score: [748]
