@@ -45,7 +45,7 @@ def draw_board(canvas, iteration):
     return total_score
 
 def main():
-    file_path = "out_100_1_3.txt"
+    file_path = "iterations.txt"
     iterations = read_iterations(file_path)
 
     root = tk.Tk()
