@@ -4,7 +4,7 @@ import sys, time, math, random, os, argparse
 from game import Game
 from ai import AI
 from test import test, test_ec
-
+from monte_carlo_agent import monte_carlo_iter
 random.seed(0)
 
 MAXC = 255
@@ -88,11 +88,12 @@ class GameRunner:
                         self.grayscale = not self.grayscale
 
             if self.auto and not game_over:
-                ai = AI(self.game.current_state())
-                if not self.ec:
-                    direction = ai.compute_decision() 
-                else:
-                    direction = ai.compute_decision_ec() 
+                # ai = AI(self.game.current_state())
+                # if not self.ec:
+                #     direction = ai.compute_decision() 
+                # else:
+                #     direction = ai.compute_decision_ec() 
+                direction = monte_carlo_iter(self.game)
 
             if direction != None:
                 self.game.move_and_place(direction)

@@ -158,3 +158,45 @@ class Game:
             self.tile_matrix = copy.deepcopy(init_tile_matrix)
         self.board_size = len(self.tile_matrix)
 
+    def get_sum(self):
+        total_sum = 0
+        # print(self.tile_matrix)
+        for row in self.tile_matrix:
+            total_sum += sum(row)
+        return total_sum
+
+    def max_num(self):
+        return max(map(max, self.tile_matrix))
+
+    def get_merge_score(self):
+        return self.get_merge_score
+    
+    def get_corner_score(self):
+        corner_score = 0
+        max_tile = self.max_num()
+
+        # # Define weights for each position
+        # weights = [
+        #     [10, 8, 7, 6],
+        #     [8, 6, 5, 4],
+        #     [7, 5, 3, 2],
+        #     [6, 4, 2, 1]
+        # ]
+
+        # for i in range(4):
+        #     for j in range(4):
+        #         corner_score += self.matrix[i][j] * weights[i][j]
+
+        # Give a bonus score if the max tile is in the corner
+        max_tile_position = self.find_tile_position(max_tile)
+        if max_tile_position == (0, 0) or max_tile_position == (0, 3) or max_tile_position == (3, 0) or max_tile_position == (3, 3):
+            corner_score += max_tile * 100
+
+        return corner_score
+
+    def find_tile_position(self, value):
+        for i in range(4):
+            for j in range(4):
+                if self.tile_matrix[i][j] == value:
+                    return (i, j)
+        return None
