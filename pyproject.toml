@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "rl"
+version = "0.1.0"
+description = "RL for 2048"
+authors = ["Nathan Thomas <nathanthomas707@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+torch = "^2.2.1"
+click = "^8.1.7"
+pygame = "^2.5.2"
+
+[tool.poetry.scripts]
+play = "rl.main:main"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.3.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
