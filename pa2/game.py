@@ -1,6 +1,7 @@
 # NOTE: Do not modify.
 import copy, random
 
+
 # Game mechanics engine. Used by both the UI and the simulator.
 class Game:
     def __init__(self, init_tile_matrix = None, init_score = 0):
@@ -11,6 +12,7 @@ class Game:
     def set_state(self, init_tile_matrix = None, init_score = 0):
         self.undoMat = []
         self.score = init_score
+        self.num_merges = 0
         if init_tile_matrix == None:
             self.tile_matrix = self.new_tile_matrix()
             self.place_random_tile()
@@ -68,6 +70,7 @@ class Game:
                     tm[i][self.board_size - 1] = 0
 
     def merge_tiles(self):
+        # create a variable that increases everytime merge tiles is called
         tm = self.tile_matrix
         for i in range(0, self.board_size):
             for k in range(0, self.board_size - 1):
@@ -76,6 +79,7 @@ class Game:
                     tm[i][k + 1] = 0
                     self.score += tm[i][k]
                     self.move_tiles()
+                    self.num_merges+=1
 
     def can_move(self):
         tm = self.tile_matrix
@@ -194,9 +198,19 @@ class Game:
 
         return corner_score
 
+    def get_num_merges(self):
+        # return the number of merges done during the game
+        return self.num_merges
+    
     def find_tile_position(self, value):
         for i in range(4):
             for j in range(4):
                 if self.tile_matrix[i][j] == value:
                     return (i, j)
         return None
+    
+    def get_tiles_values(self):
+        # return a list of all the values in the matrix
+        v = [value for row in self.tile_matrix for value in row]
+        # print (v)
+        return v

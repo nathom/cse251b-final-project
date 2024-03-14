@@ -3,6 +3,7 @@ import random, copy
 import sys
 import time
 from datetime import timedelta
+from metrics import *
 
 def random_run(game):
     game_copy = copy.deepcopy(game)
@@ -71,7 +72,8 @@ def monte_carlo_run():
     print("Max Square Value: {}".format(game.max_num()))
     print("Total Square Sum: {}".format(game.get_sum()))
     print("Total Merge Score: {}".format(game.get_merge_score()))
-    return game.max_num(), game.get_sum(), game.get_merge_score()
+    print("Number of Merges: {}".format(game.get_num_merges()))
+    return game.max_num(), game.get_sum(), game.get_merge_score(), game.get_num_merges(), game.get_tiles_values()
 
 def main():
     if len(sys.argv) != 4:
@@ -93,10 +95,12 @@ def main():
     max_val_results = [0] * NUM_TRIALS
     total_sum_results = [0] * NUM_TRIALS
     total_merge_score = [0] * NUM_TRIALS
+    num_merges = [0]* NUM_TRIALS
+    tiles = [[0]]* NUM_TRIALS
     
     start_time = time.time()
     for i in range(NUM_TRIALS):
-        max_val_results[i], total_sum_results[i], total_merge_score[i] = monte_carlo_run()
+        max_val_results[i], total_sum_results[i], total_merge_score[i] , num_merges[i], tiles[i] = monte_carlo_run()
     end_time = time.time()
         
     total_sum_avg = sum(total_sum_results) / NUM_TRIALS
@@ -117,6 +121,13 @@ def main():
     print("merge score avg: " + str(total_merge_avg))
     print()
     print("time taken: ", str(timedelta(seconds=(end_time - start_time))))
+
+    fname = "monte_carlo_" + str(NUM_ITERS) + "_" + str(NUM_TRIALS) + "_" + str(EVAL_METHOD)
+
+
+    plot_num_merges(num_merges,fname)
+    plot_merge_scores(total_merge_score, fname)
+    tile_hist(tiles, fname)
 
 if __name__ == '__main__':
     main()
