@@ -3,7 +3,8 @@ import random, copy
 import sys
 import time
 from datetime import timedelta
-from metrics import *
+from metrics_1 import hist_max_val, hist_num_merges, hist_merge_scores, hist_tiles
+from game import Game2048
 
 def random_run(game):
     game_copy = copy.deepcopy(game)
@@ -12,7 +13,7 @@ def random_run(game):
         game_copy.move_and_place(move)
         # print(game_copy.tile_matrix)
 
-    return game_copy.get_sum(), game_copy.max_num(), game_copy.get_merge_score(), game_copy.get_corner_score()
+    return game_copy.max_num(), game_copy.get_sum(), game_copy.get_merge_score(), game_copy.get_num_merges(), game_copy.get_tiles_values()
 
 def monte_carlo_iter(game):
 
@@ -64,7 +65,7 @@ def monte_carlo_iter(game):
 def monte_carlo_run():
     game = Game2048()
     i = 0
-    while not game.game_end:
+    while not game.game_over():
         print("Iteration: ", i)
         monte_carlo_iter(game)
         i += 1
@@ -100,9 +101,12 @@ def main():
     
     start_time = time.time()
     for i in range(NUM_TRIALS):
+        # game = Game2048()
         max_val_results[i], total_sum_results[i], total_merge_score[i] , num_merges[i], tiles[i] = monte_carlo_run()
+        print (f'trail {i} done')
     end_time = time.time()
-        
+    
+    print (total_sum_results, max_val_results, total_merge_score, num_merges, tiles)
     total_sum_avg = sum(total_sum_results) / NUM_TRIALS
     max_val_avg = sum(max_val_results) / NUM_TRIALS
     total_merge_avg = sum(total_merge_score) / NUM_TRIALS
@@ -124,10 +128,12 @@ def main():
 
     fname = "monte_carlo_" + str(NUM_ITERS) + "_" + str(NUM_TRIALS) + "_" + str(EVAL_METHOD)
 
-
-    plot_num_merges(num_merges,fname)
-    plot_merge_scores(total_merge_score, fname)
-    tile_hist(tiles, fname)
+    print ("here")
+    hist_num_merges(num_merges,fname)
+    hist_merge_scores(total_merge_score, fname)
+    hist_tiles(tiles, fname)
+    hist_max_val(max_val_results, fname)
+    print ("done")
 
 if __name__ == '__main__':
     main()

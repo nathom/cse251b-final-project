@@ -1,14 +1,12 @@
 import os
 import numpy as np
-import torch
-import random
-import re
 import matplotlib.pyplot as plt
 
 from game import *
 
 
 def hist_max_val(max_val,fname):
+    print ("plotting max_val")
     # plots the max_values per game -- array of ints
     total_games = len(max_val)
     # Create 'plots' directory if it doesn't exist
@@ -29,13 +27,17 @@ def hist_max_val(max_val,fname):
     plt.close()
     
 def hist_num_merges(num_merges,fname):
+    print ("plotting num_merges")
     # plots the number of merges per game -- array of ints
     total_games = len(num_merges)
     # Create 'plots' directory if it doesn't exist
     if not os.path.isdir('plots/num_merges'):
         os.mkdir('plots/num_merges')
 
-    plt.bar(num_merges, label='Number of Merges')
+    num_merges, count = np.unique(num_merges, return_counts = True)
+    print (num_merges, count)
+    plt.bar(num_merges, count, label='Number of Merges')
+    # plt.bar(num_merges, label='Number of Merges')
     plt.xlabel('Game')
     plt.ylabel('Number of merges')
     plt.title(f'Number of merges across {total_games} games')
@@ -46,13 +48,16 @@ def hist_num_merges(num_merges,fname):
     plt.close()
 
 def hist_merge_scores(merge_scores, fname):
+    print ("plotting merge_scores")
     # plots the merge scores per game -- merge_scores is an array scores
     total_games = len(merge_scores)
     # Create 'plots' directory if it doesn't exist
     if not os.path.isdir('plots/merge_scores'):
         os.mkdir('plots/merge_scores')
 
-    plt.bar(merge_scores, label='Merge Scores')
+    merge_scores, count = np.unique(merge_scores, return_counts = True)
+
+    plt.bar(merge_scores, count, label='Merge Scores')
     plt.xlabel('Game')
     plt.ylabel('Merge Scores')
     plt.title(f'Merge Scores across {total_games} games')
@@ -62,7 +67,8 @@ def hist_merge_scores(merge_scores, fname):
     plt.savefig("./plots/merge_scores/" + fname + ".svg")
     plt.close()
 
-def tile_hist(tiles, fname):
+def hist_tiles(tiles, fname):
+    print ("plotting tiles")
     # plots the normalized dist. of tiles -- tiles is a list of lists, each list contains the tiles values for a game 
     if not os.path.isdir('plots/tiles_hits'):
         os.mkdir('plots/tiles_hits')

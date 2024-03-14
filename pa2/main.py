@@ -5,7 +5,7 @@ from game import Game
 from ai import AI
 from test import test, test_ec
 from monte_carlo_agent import monte_carlo_iter
-from metrics import *
+from metrics_1 import *
 random.seed(0)
 
 MAXC = 255

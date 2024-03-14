@@ -3,9 +3,10 @@ import copy, random
 
 
 # Game mechanics engine. Used by both the UI and the simulator.
-class Game:
+class Game2048():
     def __init__(self, init_tile_matrix = None, init_score = 0):
         self.board_size = 4
+        self.game_end = False
         self.set_state(init_tile_matrix, init_score)
 
     # set the game state using the given initialization state and total points
@@ -144,6 +145,8 @@ class Game:
             self.rotate_matrix_clockwise()
             if self.can_move():
                 found_dir = True
+
+        self.game_end = not found_dir
         return not found_dir
 
     # WARNING: Deprecated: do not call this function in ai.py
@@ -173,7 +176,7 @@ class Game:
         return max(map(max, self.tile_matrix))
 
     def get_merge_score(self):
-        return self.get_merge_score
+        return self.score
     
     def get_corner_score(self):
         corner_score = 0

@@ -1,0 +1,6 @@
+avg max val: 256.0
+avg total sum: 404.0
+avg merge score: 1964.0
+max vals: [256]
+total sums: [404]
+total merge score: [1964]
