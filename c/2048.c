@@ -25,7 +25,7 @@
 
 enum move_type { UP, DOWN, LEFT, RIGHT };
 enum methods { MAX, MERGE_SCORE, SUM, SUM_WEIGHTED };
-#define METHOD 1
+#define METHOD 2
 
 // this function receives 2 pointers (indicated by *) so it can set their values
 void getColors(uint8_t value, uint8_t scheme, uint8_t *foreground,
