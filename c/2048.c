@@ -587,7 +587,7 @@ void monte_carlo_simulation(int num_branch_to_explore, int num_games,
 #if METHOD == 0
     printf("Using max method\n");
 #elif METHOD == 1
-    printf("Using merge method\n");
+    // printf("Using merge method\n");
 #elif METHOD == 2
     printf("Using sum method\n");
 #else
