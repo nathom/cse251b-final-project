@@ -522,7 +522,35 @@ void monte_carlo_iter(uint8_t board[SIZE][SIZE], uint32_t *score, int num_iter)
     move(board, max_i, score);
 }
 
-void monte_carlo_game(int num_branch_to_explore, bool display)
+// Function to write the header for a CSV file
+void write_csv_header(FILE *file)
+{
+    fprintf(file,
+            "Game Number,Number of Moves,Score,Largest Tile,Sum of "
+            "Tiles,Losing Configuration\n");
+}
+
+// Function to write data to a CSV file
+void write_csv_row(FILE *file, int game_number, int num_moves, int score,
+                   int largest_tile, int sum_of_tiles,
+                   const uint8_t losing_config[SIZE][SIZE])
+{
+    fprintf(
+        file,
+        "%d,%d,%d,%d,%d,\"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\"\n",
+        game_number, num_moves, score, largest_tile, sum_of_tiles,
+        losing_config[0][0], losing_config[0][1], losing_config[0][2],
+        losing_config[0][3], losing_config[1][0], losing_config[1][1],
+        losing_config[1][2], losing_config[1][3], losing_config[2][0],
+        losing_config[2][1], losing_config[2][2], losing_config[2][3],
+        losing_config[3][0], losing_config[3][1], losing_config[3][2],
+        losing_config[3][3]);
+}
+// monte_carlo_game(num_branch_to_explore, display, &num_moves, &score,
+//                  &largest, &sum, &final_config
+void monte_carlo_game(int num_branch_to_explore, bool display, int *num_moves,
+                      int *final_score, int *largest, int *sum,
+                      uint8_t final_config[SIZE][SIZE])
 {
     uint8_t board[SIZE][SIZE];
     uint32_t score = 0;
@@ -544,6 +572,13 @@ void monte_carlo_game(int num_branch_to_explore, bool display)
 
     printf("Game ended in %d moves. Score: %d. Largest tile: %d\n", i, score,
            max_tile(board));
+
+    // save data to write to csv
+    *num_moves = i;
+    *final_score = score;
+    *largest = max_tile(board);
+    *sum = sum_tile(board);
+    copy_board(final_config, board);
 }
 
 void monte_carlo_simulation(int num_branch_to_explore, int num_games,
@@ -558,9 +593,21 @@ void monte_carlo_simulation(int num_branch_to_explore, int num_games,
 #else
     printf("Using weighted sum method\n");
 #endif
+
+    char fn[100] = {0};
+    sprintf(fn, "monte_carlo_branch=%d_ngames=%d_method=%d.csv",
+            num_branch_to_explore, num_games, METHOD);
+    FILE *csv = fopen(fn, "w");
+    write_csv_header(csv);
     for (int i = 0; i < num_games; i++) {
-        monte_carlo_game(num_branch_to_explore, display);
+        int num_moves, score, largest, sum;
+        uint8_t final_config[SIZE][SIZE];
+        monte_carlo_game(num_branch_to_explore, display, &num_moves, &score,
+                         &largest, &sum, final_config);
+        write_csv_row(csv, i, num_moves, score, largest, sum, final_config);
     }
+    fclose(csv);
+    printf("Wrote data to './%s'\n", fn);
 }
 
 void random_game()
