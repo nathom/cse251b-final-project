@@ -140,6 +140,7 @@ class Game:
         return tiles
 
     def game_over(self):
+        print("in game over", self.tile_matrix)
         found_dir = False
         for _ in range(0, 4):
             self.rotate_matrix_clockwise()

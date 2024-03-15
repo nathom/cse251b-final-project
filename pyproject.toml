@@ -10,6 +10,8 @@ python = "^3.10"
 torch = "^2.2.1"
 click = "^8.1.7"
 pygame = "^2.5.2"
+numpy = "^1.26.4"
+numba = "^0.59.0"
 
 [tool.poetry.scripts]
 play = "rl.main:main"

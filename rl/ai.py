@@ -27,7 +27,6 @@ class Node:
 
 # AI agent. Determine the next move.
 class AI:
-    # Recommended: do not modify this __init__ function
     def __init__(self, root_state, search_depth=3):
         self.root = Node(root_state, MAX_PLAYER)
         self.search_depth = search_depth
