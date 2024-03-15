@@ -17,7 +17,7 @@
 #include <time.h>     // defines: time
 
 #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
-    #include <temp.h>  // defines: termios, TCSANOW, ICANON, ECHO
+    #include <termios.h>  // defines: termios, TCSANOW, ICANON, ECHO
     #include <unistd.h>   // defines: STDIN_FILENO, usleep
 #endif
 
@@ -604,7 +604,7 @@ void monte_carlo_simulation(int num_branch_to_explore, int num_games,
 #endif
 
     char fn[100] = {0};
-    sprintf(fn, "monte_carlo_branch=%d_ngames=%d_method=%d.csv",
+    sprintf(fn, "data/monte_carlo_branch=%d_ngames=%d_method=%d.csv",
             num_branch_to_explore, num_games, METHOD);
     FILE *csv = fopen(fn, "w");
     write_csv_header(csv);
