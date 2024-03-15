@@ -1,2 +1,9 @@
-2048: 2048.c
-	cc 2048.c -O3 -o 2048
+CC = cc
+CFLAGS = -O3
+TARGET = 2048
+
+$(TARGET): 2048.c
+	$(CC) 2048.c $(CFLAGS) -o $(TARGET)
+
+clean:
+	rm -f $(TARGET)
