@@ -20,12 +20,12 @@
 
 #define SIZE 4
 #define MAX_DEPTH 9999
-#define NUM_ROLLOUTS 200
+#define NUM_ROLLOUTS 500
 #define NUM_GAMES 100
 
-enum methods { MAX, MERGE_SCORE, SUM };
 enum move_type { UP, DOWN, LEFT, RIGHT };
-#define METHOD 2
+enum methods { MAX, MERGE_SCORE, SUM, SUM_WEIGHTED };
+#define METHOD 3
 
 // this function receives 2 pointers (indicated by *) so it can set their values
 void getColors(uint8_t value, uint8_t scheme, uint8_t *foreground,
@@ -413,12 +413,12 @@ void signal_callback_handler(int signum)
 
 void copy_board(uint8_t dest[SIZE][SIZE], const uint8_t board[SIZE][SIZE])
 {
-    // memcpy(dest, board, SIZE * SIZE * sizeof(uint8_t));
-    for (int i = 0; i < SIZE; i++) {
-        for (int j = 0; j < SIZE; j++) {
-            dest[i][j] = board[i][j];
-        }
-    }
+    memcpy(dest, board, SIZE * SIZE * sizeof(uint8_t));
+    // for (int i = 0; i < SIZE; i++) {
+    //     for (int j = 0; j < SIZE; j++) {
+    //         dest[i][j] = board[i][j];
+    //     }
+    // }
 }
 
 uint32_t max_tile(uint8_t board[SIZE][SIZE])
@@ -446,9 +446,9 @@ uint32_t sum_tile(uint8_t board[SIZE][SIZE])
     return sum;
 }
 
-uint8_t num_empty_tile(uint8_t board[SIZE][SIZE])
+uint32_t num_empty_tile(uint8_t board[SIZE][SIZE])
 {
-    uint8_t n = 0;
+    uint32_t n = 0;
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j < SIZE; j++) {
             if (board[i][j] == 0) n++;
@@ -485,8 +485,11 @@ int random_run(uint8_t board[SIZE][SIZE])
     return max_tile(board_copy);
 #elif METHOD == 1
     return _score;
-#else
+#elif METHOD == 2
     return sum_tile(board_copy);
+#elif METHOD == 3
+    // prefer more zero tiles
+    return sum_tile(board_copy) + num_empty_tile(board_copy);
 #endif
 }
 
@@ -519,21 +522,19 @@ void monte_carlo_iter(uint8_t board[SIZE][SIZE], uint32_t *score, int num_iter)
     move(board, max_i, score);
 }
 
-void monte_carlo_game(int num_branch_to_explore)
+void monte_carlo_game(int num_branch_to_explore, bool display)
 {
     uint8_t board[SIZE][SIZE];
     uint32_t score = 0;
     initBoard(board);
-    drawBoard(board, 0, score);
+    if (display) drawBoard(board, 0, score);
     int i = 0;
     while (!(gameEnded(board))) {
-        // printf("game iter %d\n", i);
         monte_carlo_iter(board, &score, num_branch_to_explore);
-        // printf("%d: Max tile %d, Score %d, Sum %d\n", i, max_tile(board),
-        // score,
-        //        sum_tile(board));
-        drawBoard(board, 0, score);
-        usleep(1000 * 10);
+        if (display) {
+            drawBoard(board, 0, score);
+            usleep(1000 * 5);
+        }
         i++;
     }
     setBufferedInput(true);
@@ -541,21 +542,24 @@ void monte_carlo_game(int num_branch_to_explore)
     // make cursor visible, reset all modes
     printf("\033[?25h\033[m");
 
-    printf("Game ended with %d iterations and score of %d. Max tile %d\n", i,
-           score, 1 << max_tile(board));
+    printf("Game ended in %d moves. Score: %d. Largest tile: %d\n", i, score,
+           max_tile(board));
 }
 
-void monte_carlo_simulation(int num_branch_to_explore, int num_games)
+void monte_carlo_simulation(int num_branch_to_explore, int num_games,
+                            bool display)
 {
 #if METHOD == 0
     printf("Using max method\n");
 #elif METHOD == 1
     printf("Using merge method\n");
-#else
+#elif METHOD == 2
     printf("Using sum method\n");
+#else
+    printf("Using weighted sum method\n");
 #endif
     for (int i = 0; i < num_games; i++) {
-        monte_carlo_game(num_branch_to_explore);
+        monte_carlo_game(num_branch_to_explore, display);
     }
 }
 
@@ -564,6 +568,7 @@ void random_game()
     uint8_t board[SIZE][SIZE];
     uint32_t score = 0;
     initBoard(board);
+    setBufferedInput(false);
     while (!(gameEnded(board))) {
         bool ok = move(board, (uint32_t)rand() % 4, &score);
         if (ok) {
@@ -593,12 +598,26 @@ int main(int argc, char *argv[])
     char c;
     bool success;
     srand(time(NULL));
+    // register signal handler for when ctrl-c is pressed
+    signal(SIGINT, signal_callback_handler);
 
     if (argc == 2 && strcmp(argv[1], "test") == 0) {
         return test();
     }
-    if (argc == 2 && strcmp(argv[1], "mc") == 0) {
-        monte_carlo_simulation(NUM_ROLLOUTS, NUM_GAMES);
+    if (argc >= 2 && strcmp(argv[1], "mc") == 0) {
+        if (argc < 5) {
+            printf(
+                "Usage ./2048 mc <num rollouts> <num games> <show games "
+                "true/false>\n");
+            return 1;
+        }
+        int num_rollouts = atoi(argv[2]);
+        int num_games = atoi(argv[3]);
+        int display = strcmp(argv[4], "true") == 0;
+        printf("Doing %d rollouts per move\n", num_rollouts);
+        printf("Doing %d games\n", num_games);
+        printf("Display: %s\n", display ? "on" : "off");
+        monte_carlo_simulation(num_rollouts, num_games, display);
         return 0;
     }
     if (argc == 2 && strcmp(argv[1], "random") == 0) {
@@ -614,9 +633,6 @@ int main(int argc, char *argv[])
 
     // make cursor invisible, erase entire screen
     printf("\033[?25l\033[2J");
-
-    // register signal handler for when ctrl-c is pressed
-    signal(SIGINT, signal_callback_handler);
 
     initBoard(board);
     setBufferedInput(false);
