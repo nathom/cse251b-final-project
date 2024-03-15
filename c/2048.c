@@ -28,7 +28,7 @@
 
 enum move_type { UP, DOWN, LEFT, RIGHT };
 enum methods { MAX, MERGE_SCORE, SUM, SUM_WEIGHTED };
-#define METHOD 3
+#define METHOD 1
 
 // this function receives 2 pointers (indicated by *) so it can set their values
 void getColors(uint8_t value, uint8_t scheme, uint8_t *foreground,
@@ -639,9 +639,10 @@ void random_game()
     setBufferedInput(true);
 
     // make cursor visible, reset all modes
-    printf("\033[?25h\033[m");
-    printf("Random player got score %d, max tile %d\n", score,
-           1 << max_tile(board));
+    // printf("\033[?25h\033[m");
+    // printf("Random player got score %d, max tile %d\n", score,
+        //    1 << max_tile(board));
+    printf("%d, %d\n", score, max_tile(board));
 }
 
 void random_simulation(int num_games)
