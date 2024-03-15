@@ -22,5 +22,7 @@ make
 ./2048 mc 200 1 true
 ```
 
-The output is written to csv files in the current directory.
+The output is written to csv files in the current directory. You
+can change the heuristic used by modifying the `METHOD` macro
+at the top of the file.
 
