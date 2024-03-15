@@ -14,9 +14,12 @@
 #include <stdio.h>    // defines: printf, puts, getchar
 #include <stdlib.h>   // defines: EXIT_SUCCESS
 #include <string.h>   // defines: strcmp
-#include <termios.h>  // defines: termios, TCSANOW, ICANON, ECHO
 #include <time.h>     // defines: time
-#include <unistd.h>   // defines: STDIN_FILENO, usleep
+
+#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
+    #include <temp.h>  // defines: termios, TCSANOW, ICANON, ECHO
+    #include <unistd.h>   // defines: STDIN_FILENO, usleep
+#endif
 
 #define SIZE 4
 #define MAX_DEPTH 9999
@@ -315,8 +318,11 @@ void initBoard(uint8_t board[SIZE][SIZE])
     // addRandom(board);
 }
 
+
+
 void setBufferedInput(bool enable)
 {
+    #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
     static bool enabled = true;
     static struct termios old;
     struct termios new;
@@ -338,6 +344,7 @@ void setBufferedInput(bool enable)
         // set the new state
         enabled = false;
     }
+    #endif
 }
 
 int test()
@@ -561,7 +568,9 @@ void monte_carlo_game(int num_branch_to_explore, bool display, int *num_moves,
         monte_carlo_iter(board, &score, num_branch_to_explore);
         if (display) {
             drawBoard(board, 0, score);
+            #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
             usleep(1000 * 5);
+            #endif
         }
         i++;
     }
@@ -721,7 +730,9 @@ int main(int argc, char *argv[])
         }
         if (success) {
             drawBoard(board, scheme, score);
+            #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
             usleep(150 * 1000);  // 150 ms
+            #endif
             addRandom(board);
             drawBoard(board, scheme, score);
             if (gameEnded(board)) {
