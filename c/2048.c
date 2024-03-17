@@ -28,7 +28,7 @@
 
 enum move_type { UP, DOWN, LEFT, RIGHT };
 enum methods { MAX, MERGE_SCORE, SUM, SUM_WEIGHTED };
-#define METHOD 1
+#define METHOD 2
 
 // this function receives 2 pointers (indicated by *) so it can set their values
 void getColors(uint8_t value, uint8_t scheme, uint8_t *foreground,
@@ -596,7 +596,7 @@ void monte_carlo_simulation(int num_branch_to_explore, int num_games,
 #if METHOD == 0
     printf("Using max method\n");
 #elif METHOD == 1
-    printf("Using merge method\n");
+    // printf("Using merge method\n");
 #elif METHOD == 2
     printf("Using sum method\n");
 #else
