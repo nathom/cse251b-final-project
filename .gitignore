@@ -166,5 +166,4 @@ c/2048
 # Darren's windows related stuff
 makefile
 /binary
-/data
 plots.py
