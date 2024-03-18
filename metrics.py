@@ -17,7 +17,10 @@ def hist_max_val(max_val,fname, title_suf = ""):
     
     max_values = [str(x) for x in max_values]
     print (max_values, n_count)
-    plt.bar(max_values,n_count, label='Maximum Tile Value')
+
+    plt.figure(figsize=(10, 6))
+
+    plt.bar(max_values,n_count, label='Maximum Tile Value', color='skyblue')
     plt.xlabel('Maximum Tile Value')
     plt.ylabel('Normalized Frequency')
     if title_suf == "":
@@ -25,6 +28,7 @@ def hist_max_val(max_val,fname, title_suf = ""):
     else:
         plt.title(f'Maximum Tile Value across {total_games} games - {title_suf}')
     plt.legend()
+    plt.grid(axis='y')
 
     plt.savefig("./plots/max_val/" + fname + ".png")
     plt.savefig("./plots/max_val/" + fname + ".svg")
@@ -54,24 +58,27 @@ def hist_num_merges(num_merges,fname, title_suf = "", bs = 50):
     num_merges = np.histogram(num_merges, bins=buckets)[1][:-1]
 
     num_merges = [str(x) for x in num_merges]
-    print (np.histogram(num_merges, bins=buckets))
-    print (num_merges, count)
+    # print (np.histogram(num_merges, bins=buckets))
+    # print (num_merges, count)
     plt.xlabel('Number of merges')
     plt.ylabel('Normalized Frequency')
-    
-    plt.bar(num_merges, count/total_games, label='Number of Merges')
+
+    plt.figure(figsize=(10, 6))
+
+    plt.bar(num_merges, count/total_games, label='Number of Merges', color='skyblue')
  
     if title_suf == "":
         plt.title(f'Number of merges across {total_games} games')
     else :
         plt.title(f'Number of merges across {total_games} games - {title_suf}')
     plt.legend()
+    plt.grid(axis='y')
 
     plt.savefig("./plots/num_merges/" + fname + ".png")
     plt.savefig("./plots/num_merges/" + fname + ".svg")
     plt.cla()
 
-def hist_merge_scores(merge_scores, fname, title_suf = ""):
+def hist_merge_scores(merge_scores, fname, title_suf = "", bs = 2000):
     print ("plotting merge_scores")
     # plots the merge scores per game -- merge_scores is an array scores
     total_games = len(merge_scores)
@@ -81,13 +88,25 @@ def hist_merge_scores(merge_scores, fname, title_suf = ""):
 
     merge_scores, count = np.unique(merge_scores, return_counts = True)
 
-    plt.bar(merge_scores, count, label='Merge Scores')
+    min_scores = min(merge_scores)
+    min_scores = min_scores - (min_scores % bs)
+    max_scores = max(merge_scores)
+    max_scores = max_scores + (bs - max_scores % bs)
+
+    buckets = np.arange(min_scores, max_scores + bs, bs)
+    count = np.histogram(merge_scores, bins=buckets)[0]
+    merge_scores = np.histogram(merge_scores, bins=buckets)[1][:-1]
+
+    merge_scores = [str(x) for x in merge_scores]
+    plt.figure(figsize=(10, 6))
+    plt.bar(merge_scores, count/total_games, label='Merge Scores', color='skyblue')
     plt.xlabel('Game')
     plt.ylabel('Merge Scores')
     if title_suf == "":
         plt.title(f'Merge Scores across {total_games} games')
     else: 
         plt.title(f'Merge Scores across {total_games} games - {title_suf}')
+    plt.grid(axis='y')
 
     plt.legend()
 
@@ -119,36 +138,14 @@ def hist_tiles(tiles, fname, title_suf = ""):
         plt.title(f'Normalized Distribution of Tile Values Over {total_games} games')
     else:
         plt.title(f'Normalized Distribution of Tile Values Over {total_games} games - {title_suf}')
-    plt.xticks(tiles_values)
+    # plt.xticks(tiles_values)
     plt.grid(axis='y')
+
+    plt.legend()
 
     plt.savefig("./plots/tiles_hits/" + fname + ".png")
     plt.savefig("./plots/tiles_hits/" + fname + ".svg")
     plt.cla()
-
-# Plot branching factor vs average score
-
-# def hist_freq_tile(name, value, largest_tiles):
-#     if not os.path.isdir("./data"): os.mkdir("./data")
-
-#     # Get the counts of each unique value
-#     a = Counter(largest_tiles).most_common()
-#     a.sort(key=lambda x: x[0])
-
-#     # Prepare the values for plotting
-#     num, freq = [], []
-#     for (v, c) in a:
-#         num.append(str(v))
-#         freq.append(c)
-
-#     print(num, freq)
-#     plt.bar(num, freq)
-#     plt.xlabel('Value')
-#     plt.ylabel('Frequency')
-#     plt.title('Branch ' + str(value) + ' Highest Tile Frequency Histogram')
-    
-#     plt.savefig("./data/" + name + ".png")
-#     plt.cla()
 
 def avg_branch(name, branches, scores):
     if not os.path.isdir('plots/avg_branch'):
