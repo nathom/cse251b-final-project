@@ -139,7 +139,7 @@ uint8_t findTarget(uint8_t array[SIZE], uint8_t x, uint8_t stop)
     return x;
 }
 
-bool slideArray(uint8_t array[SIZE], uint32_t *score)
+bool slideArray(uint8_t array[SIZE], uint32_t *score, uint32_t *num_merges)
 {
     bool success = false;
     uint8_t x, t, stop = 0;
@@ -159,6 +159,8 @@ bool slideArray(uint8_t array[SIZE], uint32_t *score)
                     *score += (uint32_t)1 << array[t];
                     // set stop to avoid double merge
                     stop = t + 1;
+                    // increase number of merges
+                    *num_merges += 1;
                 }
                 array[x] = 0;
                 success = true;
@@ -183,45 +185,45 @@ void rotateBoard(uint8_t board[SIZE][SIZE])
     }
 }
 
-bool moveUp(uint8_t board[SIZE][SIZE], uint32_t *score)
+bool moveUp(uint8_t board[SIZE][SIZE], uint32_t *score, uint32_t *num_merges)
 {
     bool success = false;
     uint8_t x;
     for (x = 0; x < SIZE; x++) {
-        success |= slideArray(board[x], score);
+        success |= slideArray(board[x], score, num_merges);
     }
     return success;
 }
 
-bool moveLeft(uint8_t board[SIZE][SIZE], uint32_t *score)
+bool moveLeft(uint8_t board[SIZE][SIZE], uint32_t *score,  uint32_t *num_merges)
 {
     bool success;
     rotateBoard(board);
-    success = moveUp(board, score);
+    success = moveUp(board, score, num_merges);
     rotateBoard(board);
     rotateBoard(board);
     rotateBoard(board);
     return success;
 }
 
-bool moveDown(uint8_t board[SIZE][SIZE], uint32_t *score)
+bool moveDown(uint8_t board[SIZE][SIZE], uint32_t *score,  uint32_t *num_merges)
 {
     bool success;
     rotateBoard(board);
     rotateBoard(board);
-    success = moveUp(board, score);
+    success = moveUp(board, score, num_merges);
     rotateBoard(board);
     rotateBoard(board);
     return success;
 }
 
-bool moveRight(uint8_t board[SIZE][SIZE], uint32_t *score)
+bool moveRight(uint8_t board[SIZE][SIZE], uint32_t *score,  uint32_t *num_merges)
 {
     bool success;
     rotateBoard(board);
     rotateBoard(board);
     rotateBoard(board);
-    success = moveUp(board, score);
+    success = moveUp(board, score, num_merges);
     rotateBoard(board);
     return success;
 }
@@ -290,18 +292,18 @@ void addRandom(uint8_t board[SIZE][SIZE])
     }
 }
 
-bool move(uint8_t board[SIZE][SIZE], enum move_type move, uint32_t *score)
+bool move(uint8_t board[SIZE][SIZE], enum move_type move, uint32_t *score,  uint32_t *num_merges)
 {
     // move should be 0-3
     bool success;
     if (move == UP) {
-        success = moveUp(board, score);
+        success = moveUp(board, score, num_merges);
     } else if (move == DOWN) {
-        success = moveDown(board, score);
+        success = moveDown(board, score, num_merges);
     } else if (move == LEFT) {
-        success = moveLeft(board, score);
+        success = moveLeft(board, score, num_merges);
     } else {
-        success = moveRight(board, score);
+        success = moveRight(board, score, num_merges);
     }
     if (success) addRandom(board);
     return success;
@@ -364,6 +366,7 @@ int test()
     uint8_t i;
     bool success = true;
     uint32_t score;
+    uint32_t num_merges;
 
     tests = (sizeof(data) / sizeof(data[0])) / (2 * SIZE + 1);
     for (t = 0; t < tests; t++) {
@@ -374,7 +377,7 @@ int test()
             array[i] = in[i];
         }
         score = 0;
-        slideArray(array, &score);
+        slideArray(array, &score, &num_merges);
         for (i = 0; i < SIZE; i++) {
             if (array[i] != out[i]) {
                 success = false;
@@ -482,10 +485,10 @@ int random_run(uint8_t board[SIZE][SIZE])
     copy_board(board_copy, board);
     assert(board_eq(board, board_copy));
     int i = 0;
-    uint32_t _score = 0;
+    uint32_t _score = 0, _num_merges = 0;
     while (!gameEnded(board_copy)) {
         enum move_type random_move = ((uint32_t)rand()) % 4;
-        bool succ = move(board_copy, random_move, &_score);
+        bool succ = move(board_copy, random_move, &_score, &_num_merges);
         i++;
     }
 #if METHOD == 0
@@ -500,15 +503,15 @@ int random_run(uint8_t board[SIZE][SIZE])
 #endif
 }
 
-void monte_carlo_iter(uint8_t board[SIZE][SIZE], uint32_t *score, int num_iter)
+void monte_carlo_iter(uint8_t board[SIZE][SIZE], uint32_t *score, uint32_t * num_merges, int num_iter)
 {
     int scores[4] = {0};
     for (int m = 0; m <= 3; m++) {
-        uint32_t total_score = 0, tmp_score = 0;
+        uint32_t total_score = 0, tmp_score = 0, tmp_merges = 0;
         uint8_t tmp[SIZE][SIZE];
         copy_board(tmp, board);
         // initial move
-        int init_ok = move(tmp, (enum move_type)m, &tmp_score);
+        int init_ok = move(tmp, (enum move_type)m, &tmp_score, &tmp_merges);
         if (!init_ok) continue;
 
         for (int i = 0; i < num_iter; i++) {
@@ -526,7 +529,7 @@ void monte_carlo_iter(uint8_t board[SIZE][SIZE], uint32_t *score, int num_iter)
         }
     }
 
-    move(board, max_i, score);
+    move(board, max_i, score, num_merges);
 }
 
 // Function to write the header for a CSV file
@@ -534,18 +537,18 @@ void write_csv_header(FILE *file)
 {
     fprintf(file,
             "Game Number,Number of Moves,Score,Largest Tile,Sum of "
-            "Tiles,Losing Configuration,seconds\n");
+            "Tiles, Number of Merges, Losing Configuration,seconds\n");
 }
 
 // Function to write data to a CSV file
 void write_csv_row(FILE *file, int game_number, int num_moves, int score,
-                   int largest_tile, int sum_of_tiles,
+                   int largest_tile, int sum_of_tiles, int num_merges,
                    const uint8_t losing_config[SIZE][SIZE], double time)
 {
     fprintf(file,
-            "%d,%d,%d,%d,%d,\"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%"
+            "%d,%d,%d,%d,%d,%d,\"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%"
             "d\",%f\n",
-            game_number, num_moves, score, largest_tile, sum_of_tiles,
+            game_number, num_moves, score, largest_tile, sum_of_tiles, num_merges,
             losing_config[0][0], losing_config[0][1], losing_config[0][2],
             losing_config[0][3], losing_config[1][0], losing_config[1][1],
             losing_config[1][2], losing_config[1][3], losing_config[2][0],
@@ -554,18 +557,19 @@ void write_csv_row(FILE *file, int game_number, int num_moves, int score,
             losing_config[3][3], time);
 }
 // monte_carlo_game(num_branch_to_explore, display, &num_moves, &score,
-//                  &largest, &sum, &final_config
+//                  &largest, &sum, &num_merges, &final_config
 void monte_carlo_game(int num_branch_to_explore, bool display, int *num_moves,
-                      int *final_score, int *largest, int *sum,
+                      int *final_score, int *largest, int *sum, int *num_merges,
                       uint8_t final_config[SIZE][SIZE])
 {
     uint8_t board[SIZE][SIZE];
     uint32_t score = 0;
+    uint32_t tmp_merges = 0;
     initBoard(board);
     if (display) drawBoard(board, 0, score);
     int i = 0;
     while (!(gameEnded(board))) {
-        monte_carlo_iter(board, &score, num_branch_to_explore);
+        monte_carlo_iter(board, &score, &tmp_merges, num_branch_to_explore);
         if (display) {
             drawBoard(board, 0, score);
             #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
@@ -585,6 +589,7 @@ void monte_carlo_game(int num_branch_to_explore, bool display, int *num_moves,
     // save data to write to csv
     *num_moves = i;
     *final_score = score;
+    *num_merges = tmp_merges;
     *largest = max_tile(board);
     *sum = sum_tile(board);
     copy_board(final_config, board);
@@ -604,20 +609,21 @@ void monte_carlo_simulation(int num_branch_to_explore, int num_games,
 #endif
 
     char fn[100] = {0};
+
     sprintf(fn, "data/monte_carlo_branch=%d_ngames=%d_method=%d.csv",
             num_branch_to_explore, num_games, METHOD);
     FILE *csv = fopen(fn, "w");
     write_csv_header(csv);
     for (int i = 0; i < num_games; i++) {
-        int num_moves, score, largest, sum;
+        int num_moves, score, largest, sum, num_merges;
         uint8_t final_config[SIZE][SIZE];
         clock_t start, end;
         start = clock();
         monte_carlo_game(num_branch_to_explore, display, &num_moves, &score,
-                         &largest, &sum, final_config);
+                         &largest, &sum, &num_merges, final_config);
         end = clock();
         double diff = ((double)(end - start)) / CLOCKS_PER_SEC;
-        write_csv_row(csv, i, num_moves, score, largest, sum, final_config,
+        write_csv_row(csv, i, num_moves, score, largest, sum, num_merges, final_config,
                       diff);
     }
     fclose(csv);
@@ -628,10 +634,11 @@ void random_game()
 {
     uint8_t board[SIZE][SIZE];
     uint32_t score = 0;
+    uint32_t num_merges = 0;
     initBoard(board);
     setBufferedInput(false);
     while (!(gameEnded(board))) {
-        bool ok = move(board, (uint32_t)rand() % 4, &score);
+        bool ok = move(board, (uint32_t)rand() % 4, &score, &num_merges);
         if (ok) {
             addRandom(board);
         }
@@ -657,6 +664,7 @@ int main(int argc, char *argv[])
     uint8_t board[SIZE][SIZE];
     uint8_t scheme = 0;
     uint32_t score = 0;
+    uint32_t num_merges = 0;
     char c;
     bool success;
     srand(time(NULL));
@@ -709,22 +717,22 @@ int main(int argc, char *argv[])
         case 97:   // 'a' key
         case 104:  // 'h' key
         case 68:   // left arrow
-            success = moveLeft(board, &score);
+            success = moveLeft(board, &score, &num_merges);
             break;
         case 100:  // 'd' key
         case 108:  // 'l' key
         case 67:   // right arrow
-            success = moveRight(board, &score);
+            success = moveRight(board, &score, &num_merges);
             break;
         case 119:  // 'w' key
         case 107:  // 'k' key
         case 65:   // up arrow
-            success = moveUp(board, &score);
+            success = moveUp(board, &score, &num_merges);
             break;
         case 115:  // 's' key
         case 106:  // 'j' key
         case 66:   // down arrow
-            success = moveDown(board, &score);
+            success = moveDown(board, &score, &num_merges);
             break;
         default:
             success = false;

@@ -163,6 +163,8 @@ c/2048
 
 *.csv
 
+.vscode
+
 # Darren's windows related stuff
 makefile
 /binary
