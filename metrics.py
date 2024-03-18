@@ -114,7 +114,7 @@ def hist_merge_scores(merge_scores, fname, title_suf = "", bs = 2000):
     plt.savefig("./plots/merge_scores/" + fname + ".svg")
     plt.cla()
 
-def hist_tiles(tiles, fname, title_suf = ""):
+def hist_tiles(tiles, fname, title_suf = "", exponent = False):
     print ("plotting tiles")
     # plots the normalized dist. of tiles -- tiles is a list of lists, each list contains the tiles values for a game (2^x)
     if not os.path.isdir('plots/tiles_hits'):
@@ -123,7 +123,8 @@ def hist_tiles(tiles, fname, title_suf = ""):
     total_games = len(tiles)
     flat_tiles = [item for sublist in tiles for item in sublist]
     
-    flat_tiles = [2**x for x in flat_tiles]
+    if exponent:
+        flat_tiles = [2**x for x in flat_tiles]
     
     tiles_values, count = np.unique(flat_tiles, return_counts = True)
     n_count = count/total_games

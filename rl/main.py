@@ -3,7 +3,12 @@ from datetime import timedelta
 
 import click
 
+import sys
+sys.path.append('../')  # Add parent directory to the Python path
+
 from .monte_carlo import monte_carlo_run
+from .ai import expectimax_run
+from metrics import *
 
 
 @click.group()
@@ -69,9 +74,49 @@ def rl():
 
 
 @play.command()
-def expectimax():
+@click.option(
+    "--num-trials",
+    type=int,
+    default=100,
+    help="Number of trials for Expectimax.",
+)
+def expectimax(num_trials):
     """Command for playing with Expectimax strategy."""
     click.echo("Expectimax strategy selected.")
+    max_val_results = [0] * num_trials
+    total_sum_results = [0] * num_trials
+    total_merge_score = [0] * num_trials
+    num_merge = [0] * num_trials
+    tile_array = [[0]] * num_trials
+    start_time = time.time()
+    print ("running expectimax")
+    for i in range(num_trials):
+        print("running trial: ", i+1, " of ", num_trials)
+        (
+            max_val_results[i],
+            total_sum_results[i],
+            total_merge_score[i],
+            num_merge[i],
+            tile_array[i]
+        ) = expectimax_run()
+    end_time = time.time()
+    print("done running expectimax")
+    total_sum_avg = sum(total_sum_results) / num_trials
+    max_val_avg = sum(max_val_results) / num_trials
+    total_merge_avg = sum(total_merge_score) / num_trials
+
+    print("total sum avg: " + str(total_sum_avg))
+    print("max val avg: " + str(max_val_avg))
+    print("merge score avg: " + str(total_merge_avg))
+    print()
+    print("time taken: ", str(timedelta(seconds=(end_time - start_time))))
+    
+    fname =  "expectimax_results"
+    title = "expectimax"
+    hist_max_val(max_val_results,fname, title_suf = title)
+    hist_num_merges(num_merge,fname,title_suf = title, bs = 50)
+    hist_merge_scores(total_merge_score, fname, title_suf = title, bs = 2000)
+    hist_tiles(tile_array, fname, title_suf = title)
 
 
 def main():
