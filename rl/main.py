@@ -93,11 +93,11 @@ def expectimax(num_trials):
     for i in range(num_trials):
         print("running trial: ", i+1, " of ", num_trials)
         (
-            max_val_results[i],
-            total_sum_results[i],
-            total_merge_score[i],
-            num_merge[i],
-            tile_array[i]
+            max_val_results[i], # largest tile
+            total_sum_results[i], # sum of all tiles
+            total_merge_score[i], # merge score
+            num_merge[i], # number of merges
+            tile_array[i] # losing configuration
         ) = expectimax_run()
     end_time = time.time()
     print("done running expectimax")
@@ -111,10 +111,17 @@ def expectimax(num_trials):
     print()
     print("time taken: ", str(timedelta(seconds=(end_time - start_time))))
     
-    fname =  "expectimax_results"
+    fname =  "expectimax_" + str(num_trials) + "_trials"
     title = "expectimax"
+    # dump all the results to a file 
+    with open(fname + ".csv", "w") as f:
+    # write the header:  "Game Number,Number of Moves,Score,Largest Tile,Sum of Tiles, Number of Merges, Losing Configuration,seconds\n"
+        f.write("Game Number, Merge Score, Largest Tile,Sum of Tiles, Number of Merges, Losing Configuration\n")
+        for i in range(num_trials):
+            f.write(str(i) + "," + str(total_merge_score[i]) + "," + str(max_val_results[i]) + "," + str(total_sum_results[i]) + "," + str(num_merge[i]) + "," + str(tile_array[i]) + "\n") 
+    
     hist_max_val(max_val_results,fname, title_suf = title)
-    hist_num_merges(num_merge,fname,title_suf = title, bs = 50)
+    hist_num_merges(num_merge,fname,title_suf = title, bs = 100)
     hist_merge_scores(total_merge_score, fname, title_suf = title, bs = 2000)
     hist_tiles(tile_array, fname, title_suf = title)
 

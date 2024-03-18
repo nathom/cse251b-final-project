@@ -66,7 +66,7 @@ for (f, n, v) in csv_list:
     score /= len(data)
     scores.append(score)
     
-    hist_tiles(tiles, n, "mcts with " + str(v)+ " branches") # tiles distribution 
+    hist_tiles(tiles, n, "mcts with " + str(v)+ " branches", True) # tiles distribution 
     hist_max_val(largest_tile, n, "mcts with " + str(v)+ " branches") # largest tile distribution
     hist_num_merges(num_merges, n, "mcts with " + str(v)+ " branches") # num merges distribution
     hist_merge_scores(merge_score, n, "mcts with " + str(v)+ " branches") # merge scores distribution
