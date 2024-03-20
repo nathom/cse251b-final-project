@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import math
 
-from game import Game
+from .game import Game
 
 MOVES = {0: "up", 1: "left", 2: "down", 3: "right"}
 MAX_PLAYER, CHANCE_PLAYER = 0, 1
@@ -250,10 +250,12 @@ class AI:
     # Return a (best direction, expectimax value) tuple if node is a MAX_PLAYER
     # Return a (None, expectimax value) tuple if node is a CHANCE_PLAYER
     def expectimax(self, node=None):
+        # print("here", node)
         if node.is_terminal():
             return None, node.state[1]
         # If player
         elif node.player_type == MAX_PLAYER:
+            # print("here ?")
             bestValue = -math.inf
             bestMove = None
             for n in node.children:
@@ -262,6 +264,7 @@ class AI:
                 if curValue > bestValue:
                     bestValue = curValue
                     bestMove = curMove
+            # print("best move", bestMove)
             return bestMove, bestValue
         # If RNG move
         elif node.player_type == CHANCE_PLAYER:
@@ -274,8 +277,11 @@ class AI:
 
     # Return decision at the root
     def compute_decision(self):
+        # print ("computing decision")
         self.build_tree(self.root, self.search_depth)
+        # print("built tree")
         direction, _ = self.expectimax(self.root)
+        # print("direction", direction)
         return direction
 
     # TODO (optional): implement method for extra credits
@@ -283,3 +289,18 @@ class AI:
         self.heuristic_build_tree(self.root, self.search_depth)
         direction, _ = self.expectimax(self.root)
         return direction
+    
+def expectimax_run():
+    game = Game()
+    i = 0 
+    # print("starting game")
+    while not game.game_over():
+        # print("Iteration: ", i, "max num", game.max_num())
+        ai = AI(game.current_state())
+        direction = ai.compute_decision()
+        # MOVES = {0: "up", 1: "left", 2: "down", 3: "right"}
+        if direction != None:
+            game.move_and_place(direction)
+        i += 1
+    # print("Game over")
+    return game.max_num(), game.get_sum(), game.get_merge_score(), game.get_num_merges(), game.get_tile_array()
