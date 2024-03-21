@@ -1215,7 +1215,7 @@ int main(int argc, const char *argv[])
         return 0;
     }
     bool const display = args[1] == "true";
-    int const update_ms = 20;
+    int const update_ms = 5;
     int const niter = stoi(args[2]);
     int const ngames = stoi(args[3]);
     signal(SIGINT, signal_callback_handler);
