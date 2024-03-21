@@ -17,7 +17,10 @@
  * Games. Springer International Publishing, 2016.
  */
 #include <assert.h>
+
+#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
 #include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <array>
@@ -31,6 +34,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+// These two are needed for Windows support
+#include <cstdint>
+typedef unsigned int uint;
 
 /**
  * output streams
@@ -1079,14 +1086,14 @@ class learning {
 class Logger {
    public:
     // Function to write CSV header
-    void write_csv_header(std::ofstream &file)
+    static void write_csv_header(std::ofstream &file)
     {
         file << "Game Number,Number of Moves,Score,Largest Tile,Sum of Tiles,"
              << "Number of Merges,Losing Configuration,Seconds\n";
     }
 
     // Function to write data to a CSV file
-    void write_csv_row(std::ofstream &file, int game_number, int num_moves,
+    static void write_csv_row(std::ofstream &file, int game_number, int num_moves,
                        int score, int largest_tile, int sum_of_tiles,
                        int num_merges, const board &losing_config, double time)
     {
@@ -1215,23 +1222,46 @@ int main(int argc, const char *argv[])
         return 0;
     }
     bool const display = args[1] == "true";
+
+    #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
     int const update_ms = 5;
+    #endif
+
     int const niter = stoi(args[2]);
     int const ngames = stoi(args[3]);
+    constexpr static int METHOD = 2;
+
+    #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
     signal(SIGINT, signal_callback_handler);
+    #endif
+
     if (display) {
         std::cout << "\033[2J" << std::flush;
     }
 
     if (cmd == "mc") {
+        char fn[100] = {0};
+
+        sprintf(fn, "data/monte_carlo_branch=%d_ngames=%d_method=%d.csv",
+                niter, ngames, METHOD);
+        std::ofstream csv;
+        csv.open(fn);
+        Logger::write_csv_header(csv);
+
         for (int i = 0; i < ngames; i++) {
-            MonteCarlo<2> runner(niter);
+            MonteCarlo<METHOD> runner(niter);
             board b;
             b.init();
             int score = 0;
             int fails = 0;
+            int moves = 0;
+
+            clock_t start, end;
+            start = clock();
             while (fails < 4) {
                 move next_move = runner.next_move(b);
+                moves++;
+
                 int reward = next_move.reward();
                 if (reward < 0) {
                     fails++;
@@ -1242,13 +1272,21 @@ int main(int argc, const char *argv[])
                     score += reward;
                     if (display) {
                         b.draw(score);
+                        #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
                         usleep(1000 * update_ms);
+                        #endif
                     }
                 }
             }
+            end = clock();
             std::cout << "Game " << i << ": Final score: " << score
                       << " max tile: " << (1u << b.max()) << std::endl;
+
+            double diff = ((double)(end - start)) / CLOCKS_PER_SEC;
+            Logger::write_csv_row(csv, i, moves, score, (1u << b.max()), b.sum(), moves * 0.99, b, diff);
         }
+
+        csv.close();
     } else if (cmd == "tuple") {
         std::string weight_path;
         if (args.size() >= 5 && args[4] != "none") {
@@ -1297,18 +1335,30 @@ int main(int argc, const char *argv[])
         // train the model
         std::vector<move> path;
         path.reserve(20000);
+
+        char fn[100] = {0};
+
+        sprintf(fn, "data/tuple_network_ngames=%d.csv", ngames);
+        std::ofstream csv;
+        csv.open(fn);
+        Logger::write_csv_header(csv);
+
+        clock_t start, end;
         for (size_t n = 1; n <= total; n++) {
             board state;
             int score = 0;
+            int moves = 0;
 
             // play an episode
             // debug << "begin episode" << std::endl;
             state.init();
+            start = clock();
             while (true) {
                 // debug << "state" << std::endl << state;
                 // selection of move
                 move best = tdl.select_best_move(state);
                 path.push_back(best);
+                moves++;
 
                 if (best.is_valid()) {
                     // debug << "best " << best;
@@ -1320,9 +1370,14 @@ int main(int argc, const char *argv[])
                 }
                 if (display) {
                     state.draw(score);
+                    #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
                     usleep(1000 * update_ms);
+                    #endif
                 }
             }
+            end = clock();
+            double diff = ((double)(end - start)) / CLOCKS_PER_SEC;
+            Logger::write_csv_row(csv, n, moves, score, (1u << state.max()), state.sum(), moves * 0.99, state, diff);
             // debug << "end episode" << std::endl;
 
             // update by TD(0)
