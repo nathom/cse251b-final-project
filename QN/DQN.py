@@ -5,12 +5,12 @@ import torch.optim as optim
 
 
 class DeepQNetwork(nn.Module):
-    def __init__(self, n_observations, n_actions, batch_size):
+    def __init__(self, n_observations = 256, n_actions = 4, batch_size = 10):
         super(DeepQNetwork, self).__init__()
         # setting up some hyperparameters
         self.lr = 0.001
         self.gamma = 0.99
-        self.epsilon = 0.2
+        self.epsilon = 0.99
         self.epsilon_dec = 0.005
         self.batch_size = batch_size
         # self.optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)

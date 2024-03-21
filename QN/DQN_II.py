@@ -13,7 +13,6 @@ import random
 from DQN import DeepQNetwork
 from rl.game_2048 import Game2048
 
-
 '''
 encode_state:
 arguments: board - a  4x4 2D array of the game board
@@ -41,7 +40,7 @@ class ReplayMemory(object):
         self.memory.append([current_state,best_action,next_state,reward,done])
 
         if len(self.memory) > self.capacity:
-            self.memory_buffer.pop(0)
+            self.memory.pop(0)
 
     def sample(self, batch_size):
         return random.sample(self.memory, batch_size)
@@ -55,18 +54,38 @@ trains the model over a batch from memory
 def model_train(model, memory, optimizer,criterion):
     np.random.shuffle(memory)
     batch_sample = memory[0:model.batch_size]
+    # sample minibatch 
+    
+    device = torch.device('cpu')
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+
+    print ("device: ", device)
+
     #loss = 0
     #iterate over selected experiences in the batch
     for e in batch_sample:
         #with torch.no_grad():
-        q_current = torch.max(model.forward(e[0]).detach())
+        q_current = torch.max(model.forward(e[0]).detach()) #best action based on current state
         q_target = e[3]
         if not e[4]:
             #print(e[2])
             #print(q_temp)
             with torch.no_grad():
-                q_target = q_target + model.gamma*torch.max(model.forward(e[2]))
+                fp = model.forward(e[2])
+                best_action = torch.max(fp.detach())
+                #print (fp, best_action)
+                q_target = q_target + model.gamma*best_action
+                # q_target = q_target + model.gamma*torch.max(model.forward(e[2]))
+        
+        
+        q_target = torch.tensor(q_target, requires_grad=True)
+        q_target = q_target.to(device)
+        q_current = q_current.to(device)
+        
+        print("values :", q_current, q_target)
         loss = criterion(q_current,q_target)
+        
         print(f"loss {loss}")
         optimizer.zero_grad()
         loss.backward()
@@ -85,32 +104,59 @@ def train(n_episode, n_iteration, mem_capacity, game, model, optimizer,criterion
     total_steps = 0
 
     for i in range(model.n_episodes):
+        # reset the game
+        game.game_reset()
+        print(f"Starting game {i}")
         # initialize the firat state
-        current_state = encode_state(game.matrix)
+        current_state = encode_state(game.matrix) 
+        # phi_t = encoded(state)
+        # encoding the values of the tiles in the game board
+        print("initial board pos: ", game.matrix)
         for j in range(model.n_iterations):
             total_steps+=1
             # Chossing and executing the best action
             prev_ms = game.merge_score
             best_action  = model.execute_action(current_state)
+            # a_t
             game.make_move(best_action)
+            # execute action a_t and observe reward and next state
+
             # Storing experience
             next_state, reward, done = encode_state(game.matrix),(game.merge_score-prev_ms),game.game_end
+            # phi_t+1, r_t, done 
             memory.push(current_state,best_action,next_state,reward,done)
+            # phi_t, a_t, r_t, phi_t+1, done
             # Update the explorarion if episode is done
             model.update_epsilon()
             current_state = next_state
+                        
+            if done:
+                print("==========================================")
+                print(f"merge score: {game.merge_score}")
+                print(f"final board pos: {game.matrix}")
+                break
 
         if total_steps >= model.batch_size:
             model_train(model,memory.memory, optimizer,criterion)
 
+        # print(f"merge score: {game.merge_score}")
+        # print(f"final board pos: {game.matrix}")#
+
 def Q_run():
+    device = torch.device('cpu')
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+
     game = Game2048()
-    model = DeepQNetwork(256,4,10)
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    criterion  = nn.MSELoss()
-    n_ep, n_iter = 50 ,50
+    batch_size =10
+    model = DeepQNetwork(batch_size=batch_size).to(device)
+    model.lr = 0.001
+    optimizer = optim.SGD(model.parameters(), lr=model.lr, momentum=0.9)
+    criterion  = nn.MSELoss().to(device)
+    # criterion.requires_grad = True
+    n_ep, n_iter = 50 ,100
     Checkpoint = "DQN_weights"
-    train(50,50,5000,game,model,optimizer,criterion)
+    train(n_ep,n_iter,10000,game,model,optimizer,criterion)
 
     if not os.path.isdir('checkpoint'):
         os.mkdir('checkpoint')
@@ -122,9 +168,13 @@ def Q_run():
     'optimizer_state_dict': optimizer.state_dict(),
     'loss': criterion,
     }, './checkpoint/' + Checkpoint)
+    
+    
+
 
 if __name__=="__main__": 
     Q_run()
+    
 
     
 
