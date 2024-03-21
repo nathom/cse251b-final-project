@@ -435,12 +435,12 @@ class board {
         return count;
     }
 
+   public:
     inline uint64_t squareAt(uint8_t x, uint8_t y) const
     {
         return at(y * 4 + x);
     }
 
-   public:
     void draw(uint32_t score) const
     {
         uint8_t x, y, fg, bg;
@@ -940,7 +940,7 @@ class learning {
             // error between future value of reward and current esimate, like
             // -gradient
             float error = target - estimate(move.afterstate());
-            //
+            // `update` modifies weights
             target = move.reward() + update(move.afterstate(), alpha * error);
             // debug << "update error = " << error << " for" << std::endl
             //       << move.afterstate();
@@ -1076,6 +1076,42 @@ class learning {
     std::vector<int> maxtile;
 };
 
+class Logger {
+   public:
+    // Function to write CSV header
+    void write_csv_header(std::ofstream &file)
+    {
+        file << "Game Number,Number of Moves,Score,Largest Tile,Sum of Tiles,"
+             << "Number of Merges,Losing Configuration,Seconds\n";
+    }
+
+    // Function to write data to a CSV file
+    void write_csv_row(std::ofstream &file, int game_number, int num_moves,
+                       int score, int largest_tile, int sum_of_tiles,
+                       int num_merges, const board &losing_config, double time)
+    {
+        std::stringstream ss;
+        ss << game_number << ',' << num_moves << ',' << score << ','
+           << largest_tile << ',' << sum_of_tiles << ',' << num_merges << ",\"";
+
+        for (size_t i = 0; i < 4; ++i) {
+            for (size_t j = 0; j < 4; ++j) {
+                ss << losing_config.squareAt(i, j);
+                // ss << static_cast<int>(losing_config[i][j]);
+                if (j < 4 - 1) {
+                    ss << ',';
+                }
+            }
+            if (i < 4 - 1) {
+                ss << ',';
+            }
+        }
+
+        ss << "\"," << time << '\n';
+        file << ss.str();
+    }
+};
+
 template <int Method>
 class MonteCarlo {
    public:
@@ -1164,16 +1200,22 @@ int main(int argc, const char *argv[])
     info << "TDL2048-Demo" << std::endl;
     std::vector<std::string> args(argv + 1, argv + argc);
 
+    static const std::string help_msg =
+        "Usage: 2048 <mc/tuple> <display: true/false> <num iter> "
+        "<num games> [model path | none] [save path | none]";
+
     if (args.size() < 4 || args.size() > 6) {
-        std::cout << "Usage: 2048 <mc/tuple> <display: true/false> <num iter> "
-                     "<num games> [model path | none] [save path | none]"
-                  << std::endl;
+        std::cerr << help_msg << std::endl;
         return 1;
     }
 
     std::string const cmd = args[0];
+    if (cmd == "help" || cmd == "h") {
+        std::cerr << help_msg << std::endl;
+        return 0;
+    }
     bool const display = args[1] == "true";
-    int const update_ms = 20;
+    int const update_ms = 1;
     int const niter = stoi(args[2]);
     int const ngames = stoi(args[3]);
     signal(SIGINT, signal_callback_handler);
