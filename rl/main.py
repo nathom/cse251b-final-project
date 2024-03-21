@@ -8,7 +8,7 @@ sys.path.append('../')  # Add parent directory to the Python path
 
 from .monte_carlo import monte_carlo_run
 from .ai import expectimax_run
-from metrics import *
+from data.metrics import *
 
 
 @click.group()

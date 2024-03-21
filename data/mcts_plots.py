@@ -3,7 +3,41 @@ import matplotlib.pyplot as plt
 import csv
 import os
 import re
-import seaborn as sns
+from metrics import *
+
+def csvReader(csv_path):
+    parsed_data = []
+
+    # Open the CSV file and read its contents
+    with open(csv_path, newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+
+        for row in reader:
+            # Convert elements to appropriate data types
+            game_number = int(row[0])
+            num_moves = int(row[1])
+            score = int(row[2])
+            largest_tile = int(row[3])
+            sum_of_tiles = int(row[4])
+            num_merges = int(row[5])
+            losing_config = list(map(int, row[6].split(',')))
+            seconds = float(row[7])
+
+            # Store the parsed data in a dictionary
+            parsed_data.append({
+                'Game Number': game_number,
+                'Number of Moves': num_moves,
+                'Score': score,
+                'Largest Tile': largest_tile,
+                'Sum of Tiles': sum_of_tiles,
+                'Number of Merges': num_merges,
+                'Losing Configuration': losing_config,
+                'Seconds': seconds
+            })
+    
+    # List of each entry as a dictionary
+    return parsed_data
 
 def csv_to_average(csv_path):
     averaged_data = {'avg_num_moves': 0, 'avg_score': 0, 'avg_max_tile': 0, 'avg_sum_tiles': 0, 'avg_time': 0}
@@ -75,6 +109,7 @@ def mcts_methods_bar_graph(name, csv_file_names):
         plt.savefig(f"./data/plots/{name}_{m}.png")
         plt.cla()
 
+# These paths were called from top level, so you might have to update these if you are in this directory.
 csv_list = [("./data/monte_carlo_branch=50_ngames=100_method=0.csv", "branches_100_games_20", 100),
             ("./data/monte_carlo_branch=50_ngames=100_method=1.csv", "branches_200_games_20", 200),
             ("./data/monte_carlo_branch=50_ngames=100_method=2.csv", "branches_300_games_20", 300),
@@ -87,5 +122,20 @@ csv_list = [("./data/monte_carlo_branch=50_ngames=100_method=0.csv", "branches_1
             ("./data/monte_carlo_branch=250_ngames=100_method=1.csv", "branches_200_games_20", 200),
             ("./data/monte_carlo_branch=250_ngames=100_method=2.csv", "branches_300_games_20", 300),
             ("./data/monte_carlo_branch=250_ngames=100_method=3.csv", "branches_400_games_20", 400)]
+# mcts_methods_bar_graph("mcts", csv_list)
 
-mcts_methods_bar_graph("mcts", csv_list)
+# Best mcts rollout and method.
+csv_info = csvReader("./data/rollout_best=250_games=100_method=3.csv")
+n = len(csv_info) # Should be 100
+
+max_val, merge_scores, num_merges, tiles_hits = [], [], [], []
+for d in csv_info:
+    max_val.append(d['Largest Tile'])
+    merge_scores.append(d['Score'])
+    num_merges.append(d['Number of Merges'])
+    tiles_hits.append(d['Losing Configuration'])
+
+hist_max_val(max_val, "mcts_100_trials", title_suf="MCTS")
+hist_merge_scores(merge_scores, "mcts_100_trials", title_suf="MCTS")
+hist_num_merges(num_merges, "mcts_100_trials", title_suf="MCTS")
+hist_tiles(tiles_hits, "mcts_100_trials", title_suf="MCTS", exponent=True)

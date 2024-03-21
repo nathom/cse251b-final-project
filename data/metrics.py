@@ -1,10 +1,17 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from collections import Counter
 
+def zero_remover(hist_x, hist_y):
+    x, y, n = [], [], len(hist_x)
 
-def hist_max_val(max_val,fname, title_suf = ""):
+    for i in range(n):
+        if (hist_y[i] != 0):
+            x.append(hist_x[i])
+            y.append(hist_y[i])
+    return x, y
+
+def hist_max_val(max_val, fname, title_suf = ""):
     print ("plotting max_val")
     # plots the max_values per game -- array of ints
     total_games = len(max_val)
@@ -18,9 +25,12 @@ def hist_max_val(max_val,fname, title_suf = ""):
     max_values = [str(x) for x in max_values]
     print (max_values, n_count)
 
+    # Remove the empty cells before plotting
+    max_values, n_count = zero_remover(max_values, n_count)
+
     plt.figure(figsize=(10, 6))
 
-    plt.bar(max_values,n_count, label='Maximum Tile Value', color='skyblue')
+    plt.bar(max_values, n_count, label='Maximum Tile Value', color='skyblue')
     plt.xlabel('Maximum Tile Value')
     plt.ylabel('Normalized Frequency')
     if title_suf == "":
@@ -60,12 +70,15 @@ def hist_num_merges(num_merges,fname, title_suf = "", bs = 50):
     num_merges = [str(x) for x in num_merges]
     # print (np.histogram(num_merges, bins=buckets))
     # print (num_merges, count)
-    plt.xlabel('Number of merges')
+    plt.xlabel('Number of Merges')
     plt.ylabel('Normalized Frequency')
+
+    # Remove the empty cells before plotting
+    num_merges, merge_count = zero_remover(num_merges, count/total_games)
 
     plt.figure(figsize=(10, 6))
 
-    plt.bar(num_merges, count/total_games, label='Number of Merges', color='skyblue')
+    plt.bar(num_merges, merge_count, label='Number of Merges', color='skyblue')
  
     if title_suf == "":
         plt.title(f'Number of merges across {total_games} games')
@@ -98,8 +111,12 @@ def hist_merge_scores(merge_scores, fname, title_suf = "", bs = 2000):
     merge_scores = np.histogram(merge_scores, bins=buckets)[1][:-1]
 
     merge_scores = [str(x) for x in merge_scores]
+
+    # Remove the empty cells before plotting
+    merge_scores, score_count = zero_remover(merge_scores, count/total_games)
+
     plt.figure(figsize=(10, 6))
-    plt.bar(merge_scores, count/total_games, label='Merge Scores', color='skyblue')
+    plt.bar(merge_scores, score_count, label='Merge Scores', color='skyblue')
     plt.xlabel('Game')
     plt.ylabel('Merge Scores')
     if title_suf == "":
@@ -130,9 +147,12 @@ def hist_tiles(tiles, fname, title_suf = "", exponent = False):
     n_count = count/total_games
 
     tiles_values = [str(x) for x in tiles_values]
-    
+
+    # Remove the empty cells before plotting
+    tiles_values, n_count = zero_remover(tiles_values, n_count)
+
     plt.figure(figsize=(10, 6))
-    plt.bar(tiles_values, n_count, color='skyblue')
+    plt.bar(tiles_values, n_count, label='Tile Frequency', color='skyblue')
     plt.xlabel('Tile Value')
     plt.ylabel('Normalized Frequency')
     if title_suf == "":
