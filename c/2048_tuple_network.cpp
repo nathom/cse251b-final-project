@@ -1215,7 +1215,7 @@ int main(int argc, const char *argv[])
         return 0;
     }
     bool const display = args[1] == "true";
-    int const update_ms = 1;
+    int const update_ms = 20;
     int const niter = stoi(args[2]);
     int const ngames = stoi(args[3]);
     signal(SIGINT, signal_callback_handler);
@@ -1289,6 +1289,9 @@ int main(int argc, const char *argv[])
             tdl.load(weight_path);
         } else {
             std::cout << "training model from scratch!" << std::endl;
+        }
+        if (display) {
+            std::cout << "\033[2J" << std::flush;
         }
 
         // train the model
