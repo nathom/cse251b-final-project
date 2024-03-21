@@ -159,6 +159,7 @@ cython_debug/
 #.idea/
 .DS_Store
 c/2048
+QN/checkpoint/
 
 .vscode
 
