@@ -161,6 +161,10 @@ cython_debug/
 .DS_Store
 c/2048
 
+*.csv
+
+.vscode
+
 # Darren's windows related stuff
 makefile
 /binary
