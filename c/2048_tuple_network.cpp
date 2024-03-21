@@ -39,7 +39,7 @@
  */
 std::ostream &info = std::cout;
 std::ostream &error = std::cerr;
-std::ostream &debug = *(new std::ofstream);
+// std::ostream &debug = *(new std::ofstream);
 
 /**
  * 64-bit bitboard implementation for 2048
@@ -89,6 +89,27 @@ class board {
     void set(int i, int t)
     {
         raw = (raw & ~(0x0fULL << (i << 2))) | (uint64_t(t & 0x0f) << (i << 2));
+    }
+
+    int max() const
+    {
+        int m = 0;
+        for (int i = 0; i < 16; i++) {
+            int val = at(i);
+            if (val > m) {
+                m = val;
+            }
+        }
+        return m;
+    }
+
+    int sum() const
+    {
+        int s = 0;
+        for (int i = 0; i < 16; i++) {
+            s += (1u << at(i));
+        }
+        return s;
     }
 
    public:
@@ -383,7 +404,7 @@ class board {
     uint64_t raw;
     // this function receives 2 pointers (indicated by *) so it can set their
     // values
-    static void getColors(uint8_t value, uint8_t scheme, uint8_t *foreground,
+    static void getColors(uint8_t value, uint8_t *foreground,
                           uint8_t *background)
     {
         uint8_t original[] = {
@@ -400,8 +421,8 @@ class board {
         uint8_t *schemes[] = {original, blackwhite, bluered};
         // modify the 'pointed to' variables (using a * on the left hand of the
         // assignment)
-        *foreground = *(schemes[scheme] + (1 + value * 2) % sizeof(original));
-        *background = *(schemes[scheme] + (0 + value * 2) % sizeof(original));
+        *foreground = *(schemes[2] + (1 + value * 2) % sizeof(original));
+        *background = *(schemes[2] + (0 + value * 2) % sizeof(original));
         // alternatively we could have returned a struct with two variables
     }
     static uint8_t getDigitCount(uint32_t number)
@@ -414,14 +435,13 @@ class board {
         return count;
     }
 
-    uint64_t squareAt(uint8_t x, uint8_t y) const
+   public:
+    inline uint64_t squareAt(uint8_t x, uint8_t y) const
     {
-        assert(x < 4 && y < 4 && x >= 0 && y >= 0);
         return at(y * 4 + x);
     }
 
-   public:
-    void drawBoard(uint32_t score) const
+    void draw(uint32_t score) const
     {
         uint8_t x, y, fg, bg;
         printf("\033[H");  // move cursor to 0,0
@@ -431,14 +451,14 @@ class board {
                 // send the addresses of the foreground and background
                 // variables, so that they can be modified by the getColors
                 // function
-                getColors(squareAt(x, y), 0, &fg, &bg);
+                getColors(squareAt(x, y), &fg, &bg);
                 printf("\033[38;5;%d;48;5;%dm", fg, bg);  // set color
                 printf("       ");
                 printf("\033[m");  // reset all modes
             }
             printf("\n");
             for (x = 0; x < 4; x++) {
-                getColors(squareAt(x, y), 0, &fg, &bg);
+                getColors(squareAt(x, y), &fg, &bg);
                 printf("\033[38;5;%d;48;5;%dm", fg, bg);  // set color
                 if (squareAt(x, y) != 0) {
                     uint32_t number = 1 << squareAt(x, y);
@@ -451,7 +471,7 @@ class board {
             }
             printf("\n");
             for (x = 0; x < 4; x++) {
-                getColors(squareAt(x, y), 0, &fg, &bg);
+                getColors(squareAt(x, y), &fg, &bg);
                 printf("\033[38;5;%d;48;5;%dm", fg, bg);  // set color
                 printf("       ");
                 printf("\033[m");  // reset all modes
@@ -766,7 +786,7 @@ class move {
      */
     bool assign(const board &b)
     {
-        debug << "assign " << name() << std::endl << b;
+        // debug << "assign " << name() << std::endl << b;
         after = before = b;
         score = after.move(opcode);
         esti = score != -1 ? score : -std::numeric_limits<float>::max();
@@ -849,7 +869,7 @@ class learning {
      */
     float estimate(const board &b) const
     {
-        debug << "estimate " << std::endl << b;
+        // debug << "estimate " << std::endl << b;
         float value = 0;
         for (feature *feat : feats) {
             value += feat->estimate(b);
@@ -862,9 +882,9 @@ class learning {
      */
     float update(const board &b, float u) const
     {
-        debug << "update "
-              << " (" << u << ")" << std::endl
-              << b;
+        // debug << "update "
+        //       << " (" << u << ")" << std::endl
+        //       << b;
         float adjust = u / feats.size();
         float value = 0;
         for (feature *feat : feats) {
@@ -895,7 +915,7 @@ class learning {
                     best = cur;
                 }
             }
-            debug << "test " << cur;
+            // debug << "test " << cur;
         }
         return best;
     }
@@ -920,10 +940,10 @@ class learning {
             // error between future value of reward and current esimate, like
             // -gradient
             float error = target - estimate(move.afterstate());
-            //
+            // `update` modifies weights
             target = move.reward() + update(move.afterstate(), alpha * error);
-            debug << "update error = " << error << " for" << std::endl
-                  << move.afterstate();
+            // debug << "update error = " << error << " for" << std::endl
+            //       << move.afterstate();
         }
     }
 
@@ -1056,73 +1076,265 @@ class learning {
     std::vector<int> maxtile;
 };
 
+class Logger {
+   public:
+    // Function to write CSV header
+    void write_csv_header(std::ofstream &file)
+    {
+        file << "Game Number,Number of Moves,Score,Largest Tile,Sum of Tiles,"
+             << "Number of Merges,Losing Configuration,Seconds\n";
+    }
+
+    // Function to write data to a CSV file
+    void write_csv_row(std::ofstream &file, int game_number, int num_moves,
+                       int score, int largest_tile, int sum_of_tiles,
+                       int num_merges, const board &losing_config, double time)
+    {
+        std::stringstream ss;
+        ss << game_number << ',' << num_moves << ',' << score << ','
+           << largest_tile << ',' << sum_of_tiles << ',' << num_merges << ",\"";
+
+        for (size_t i = 0; i < 4; ++i) {
+            for (size_t j = 0; j < 4; ++j) {
+                ss << losing_config.squareAt(i, j);
+                // ss << static_cast<int>(losing_config[i][j]);
+                if (j < 4 - 1) {
+                    ss << ',';
+                }
+            }
+            if (i < 4 - 1) {
+                ss << ',';
+            }
+        }
+
+        ss << "\"," << time << '\n';
+        file << ss.str();
+    }
+};
+
+template <int Method>
+class MonteCarlo {
+   public:
+    MonteCarlo(int num_iter) : num_iter(num_iter) {}
+    move next_move(board const &b) const
+    {
+        int movn = monte_carlo_iter(b);
+        return move(b, movn);
+    }
+
+   private:
+    int num_iter;
+    int random_run(board const &b) const
+    {
+        board board_copy = b;
+        int score = 0, total_score = 0;
+        int fail = 0;
+        while (fail < 4) {
+            uint random_move = ((uint)rand()) % 4;
+            score = board_copy.move(random_move);
+            if (score < 0) {
+                fail++;
+            } else {
+                fail = 0;
+                total_score += score;
+                board_copy.popup();
+            }
+        }
+        if constexpr (Method == 0) {
+            return board_copy.max();
+        } else if constexpr (Method == 1) {
+            return total_score;
+        } else if constexpr (Method == 2) {
+            return board_copy.sum();
+        }
+    }
+
+    int monte_carlo_iter(board const &b) const
+    {
+        int scores[4] = {0};
+        for (int m = 0; m <= 3; m++) {
+            uint32_t total_score = 0;
+            board tmp = b;
+            // initial move
+            int score = tmp.move(m);
+            tmp.popup();
+            if (score == -1) {
+                // invalid move
+                continue;
+            }
+
+            for (int i = 0; i < num_iter; i++) {
+                total_score += random_run(tmp);
+            }
+
+            scores[m] = total_score;
+        }
+
+        int max = scores[0], max_i = 0;
+        for (int i = 1; i < 4; i++) {
+            if (scores[i] > max) {
+                max = scores[i];
+                max_i = i;
+            }
+        }
+
+        return max_i;
+    }
+};
+
+learning tdl;
+std::string save_path;
+void signal_callback_handler(int signum)
+{
+    printf("         TERMINATED         \n");
+    // setBufferedInput(true);
+    // make cursor visible, reset all modes
+    printf("\033[?25h\033[m");
+    if (!save_path.empty()) {
+        tdl.save(save_path);
+    }
+    exit(signum);
+}
 int main(int argc, const char *argv[])
 {
     info << "TDL2048-Demo" << std::endl;
-    learning tdl;
+    std::vector<std::string> args(argv + 1, argv + argc);
 
-    // set the learning parameters
-    float alpha = 0.1;
-    size_t total = 100000;
-    unsigned seed = 0;
-    const std::string model_path = "saved_model_" + std::to_string(total) +
-                                   "_" + std::to_string(alpha) + "_" +
-                                   std::to_string(seed);
+    static const std::string help_msg =
+        "Usage: 2048 <mc/tuple> <display: true/false> <num iter> "
+        "<num games> [model path | none] [save path | none]";
 
-    info << "alpha = " << alpha << std::endl;
-    info << "total = " << total << std::endl;
-    info << "seed = " << seed << std::endl;
-    info << "saving model to " << model_path << std::endl;
-    std::srand(seed);
-
-    // initialize the features of the 4x6-tuple network
-    tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
-    tdl.add_feature(new pattern({4, 5, 6, 7, 8, 9}));
-    tdl.add_feature(new pattern({0, 1, 2, 4, 5, 6}));
-    tdl.add_feature(new pattern({4, 5, 6, 8, 9, 10}));
-
-    // restore the model from file
-    tdl.load(model_path);
-
-    // train the model
-    std::vector<move> path;
-    path.reserve(20000);
-    for (size_t n = 1; n <= total; n++) {
-        board state;
-        int score = 0;
-
-        // play an episode
-        debug << "begin episode" << std::endl;
-        state.init();
-        while (true) {
-            debug << "state" << std::endl << state;
-            // selection of move
-            move best = tdl.select_best_move(state);
-            path.push_back(best);
-
-            if (best.is_valid()) {
-                debug << "best " << best;
-                score += best.reward();
-                state = best.afterstate();
-                state.popup();
-            } else {
-                break;
-            }
-            state.drawBoard(score);
-            usleep(1000 * 20);
-        }
-        debug << "end episode" << std::endl;
-
-        // update by TD(0)
-        // update weights (learning)
-        tdl.learn_from_episode(path, alpha);
-        // print stats
-        tdl.make_statistic(n, state, score);
-        path.clear();
+    if (args.size() < 4 || args.size() > 6) {
+        std::cerr << help_msg << std::endl;
+        return 1;
     }
 
-    // store the model into file
-    tdl.save(model_path);
+    std::string const cmd = args[0];
+    if (cmd == "help" || cmd == "h") {
+        std::cerr << help_msg << std::endl;
+        return 0;
+    }
+    bool const display = args[1] == "true";
+    int const update_ms = 1;
+    int const niter = stoi(args[2]);
+    int const ngames = stoi(args[3]);
+    signal(SIGINT, signal_callback_handler);
+    if (display) {
+        std::cout << "\033[2J" << std::flush;
+    }
+
+    if (cmd == "mc") {
+        for (int i = 0; i < ngames; i++) {
+            MonteCarlo<2> runner(niter);
+            board b;
+            b.init();
+            int score = 0;
+            int fails = 0;
+            while (fails < 4) {
+                move next_move = runner.next_move(b);
+                int reward = next_move.reward();
+                if (reward < 0) {
+                    fails++;
+                } else {
+                    fails = 0;
+                    b = next_move.afterstate();
+                    b.popup();
+                    score += reward;
+                    if (display) {
+                        b.draw(score);
+                        usleep(1000 * update_ms);
+                    }
+                }
+            }
+            std::cout << "Game " << i << ": Final score: " << score
+                      << " max tile: " << (1u << b.max()) << std::endl;
+        }
+    } else if (cmd == "tuple") {
+        std::string weight_path;
+        if (args.size() >= 5 && args[4] != "none") {
+            weight_path = args[4];
+        } else {
+            std::cout << "warning: no weights provided" << std::endl;
+        }
+        if (args.size() >= 6 && args[5] != "none") {
+            save_path = args[5];
+        } else {
+            std::cout << "warning: no save path provided" << std::endl;
+        }
+        float alpha = 0.1;
+        size_t total = ngames;
+        unsigned seed = 0;
+
+        info << "alpha = " << alpha << std::endl;
+        info << "total = " << total << std::endl;
+        info << "seed = " << seed << std::endl;
+        info << "saving model to " << save_path << std::endl;
+        std::srand(seed);
+
+        // initialize the features of the 4x6-tuple network
+        // Original features
+        // tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
+        // tdl.add_feature(new pattern({4, 5, 6, 7, 8, 9}));
+        // tdl.add_feature(new pattern({0, 1, 2, 4, 5, 6}));
+        // tdl.add_feature(new pattern({4, 5, 6, 8, 9, 10}));
+
+        tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
+        tdl.add_feature(new pattern({4, 5, 6, 7, 8, 9}));
+        tdl.add_feature(new pattern({0, 1, 2, 4, 5, 6}));
+        tdl.add_feature(new pattern({4, 5, 6, 8, 9, 10}));
+
+        // restore the model from file
+        if (!weight_path.empty()) {
+            std::cout << "loading model from " << weight_path << std::endl;
+            tdl.load(weight_path);
+        } else {
+            std::cout << "training model from scratch!" << std::endl;
+        }
+
+        // train the model
+        std::vector<move> path;
+        path.reserve(20000);
+        for (size_t n = 1; n <= total; n++) {
+            board state;
+            int score = 0;
+
+            // play an episode
+            // debug << "begin episode" << std::endl;
+            state.init();
+            while (true) {
+                // debug << "state" << std::endl << state;
+                // selection of move
+                move best = tdl.select_best_move(state);
+                path.push_back(best);
+
+                if (best.is_valid()) {
+                    // debug << "best " << best;
+                    score += best.reward();
+                    state = best.afterstate();
+                    state.popup();
+                } else {
+                    break;
+                }
+                if (display) {
+                    state.draw(score);
+                    usleep(1000 * update_ms);
+                }
+            }
+            // debug << "end episode" << std::endl;
+
+            // update by TD(0)
+            // update weights (learning)
+            tdl.learn_from_episode(path, alpha);
+            // print stats
+            tdl.make_statistic(n, state, score);
+            path.clear();
+        }
+
+        // store the model into file
+        if (!save_path.empty()) {
+            tdl.save(save_path);
+        }
+    }
 
     return 0;
 }
