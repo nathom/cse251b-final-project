@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "deque": "c",
+        "iterator": "c"
+    }
+}

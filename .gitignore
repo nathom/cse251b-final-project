@@ -160,6 +160,7 @@ cython_debug/
 #.idea/
 .DS_Store
 c/2048
+QN/checkpoint/
 
 # Darren's windows related stuff
 makefile
