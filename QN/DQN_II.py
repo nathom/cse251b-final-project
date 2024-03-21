@@ -1,13 +1,14 @@
 
 import os
+import argparse
+import time
+from datetime import timedelta
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
 import numpy as np
 from collections import namedtuple, deque
 from itertools import count
-import math
 import random
 import tqdm 
 import matplotlib.pyplot as plt
@@ -18,23 +19,12 @@ import sys
 # append the parent directory to the path
 sys.path.append('..')
 
-from DQN import DeepQNetwork
+from DQN import *
 from rl.game_2048 import Game2048
 
 device = None
 
-'''
-encode_state:
-arguments: board - a  4x4 2D array of the game board
-returns a one-hot encoded array of the state of the board
-'''
-def encode_state(board):
-  board_flat = [0 if e == 0 else int(math.log(e, 2)) for e in board.flatten()]
-  board_flat = torch.LongTensor(board_flat)
-  board_flat = F.one_hot(board_flat, num_classes=16).float().flatten()
-  board_flat = board_flat.reshape(1, 4, 4, 16).permute(0, 3, 1, 2)
-#   print (f"board_flat: {board_flat.shape}")
-  return board_flat
+
 
 '''
 Create a replay memory buffer
@@ -247,7 +237,7 @@ def Q_run():
     optimizer = optim.Adam(policy.parameters(), lr=policy.lr)
     criterion  = nn.MSELoss().to(device)
     # criterion.requires_grad = True
-    n_ep, n_iter = 40 ,400
+    n_ep, n_iter = 1000 ,500
     Checkpoint = "DQN_weights"
 
     target.load_state_dict(policy.state_dict())
@@ -258,12 +248,13 @@ def Q_run():
         os.mkdir('checkpoint')
 
     print('=======>Saving..')
-    torch.save({
-    'episodes': n_ep ,
-    'model_state_dict': policy.state_dict(),
-    'optimizer_state_dict': optimizer.state_dict(),
-    'loss': criterion,
-    }, './checkpoint/' + Checkpoint)
+    # torch.save({
+    # 'episodes': n_ep ,
+    # 'model_state_dict': policy.state_dict(),
+    # 'optimizer_state_dict': optimizer.state_dict(),
+    # 'loss': criterion,
+    # }, './checkpoint/' + Checkpoint)
+    torch.save(target.state_dict(), 'checkpoint/target_net.pth')
     
     
 
@@ -371,8 +362,50 @@ def plot_merges (merges, fname):
     plt.close()
 
 
+
 if __name__=="__main__":
     device = torch.device('cpu')
     if torch.cuda.is_available():
-        device = torch.device('cuda') 
-    Q_run()
+        device = torch.device('cuda')
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--train_play', help='whether to play using DQN or train it')
+    args = parser.parse_args()
+
+    if args.train_play == "train":   
+        Q_run()
+
+    #game = Game2048()
+    batch_size = 32 
+    Q = DeepQNetwork(batch_size=batch_size).to(device)
+    Q.load_state_dict(torch.load("./checkpoint/target_net.pth"))
+
+    num_trials =10
+    max_val_results = [0] * num_trials
+    total_sum_results = [0] * num_trials
+    total_merge_score = [0] * num_trials
+    # currently running the game once
+    start_time = time.time()
+    for i in range(num_trials):
+        (
+                max_val_results[i],
+                total_sum_results[i],
+                total_merge_score[i],
+        ) = Q.play()
+        print("############################################")
+        print(f"max value result {i}: {max_val_results[i]}")
+        print(f"total sum results {i}: {total_sum_results[i]}")
+        print(f"total merge score {i}: {total_merge_score[i]}")
+    
+    end_time = time.time()
+
+    total_sum_avg = sum(total_sum_results) / num_trials
+    max_val_avg = sum(max_val_results) / num_trials
+    total_merge_avg = sum(total_merge_score) / num_trials
+
+    print("total sum avg: " + str(total_sum_avg))
+    print("max val avg: " + str(max_val_avg))
+    print("merge score avg: " + str(total_merge_avg))
+    print()
+    print("time taken: ", str(timedelta(seconds=(end_time - start_time))))
+    

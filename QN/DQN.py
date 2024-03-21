@@ -2,6 +2,10 @@ import torch.nn as nn
 import torch
 import numpy as np
 import torch.optim as optim
+import torch.nn.functional as F
+import math
+from  rl.game_2048 import Game2048
+#from DQN_II import encode_state
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -96,4 +100,32 @@ class DeepQNetwork(nn.Module):
         self.epsilon = max (self.end_epsilon, self.start_epsilon * (self.epsilon_dec ** self.steps_done))
         # print (f"epsilon: {self.epsilon}")
 
+    def play(self):
+        game = Game2048()
+        i = 0
+        while not game.game_end:
+            #print("Iteration: ", i, "max num", game.max_num())
+            #monte_carlo_iter(game, num_iters, eval_method)
+            best_action = self.execute_action(encode_state(game.matrix).to(device))
+            game.make_move(best_action)
+            
+            i += 1
+
+        # print("Max Square Value: {}".format(game.max_num()))
+        # print("Total Square Sum: {}".format(game.get_sum()))
+        # print("Total Merge Score: {}".format(game.get_merge_score()))
+        return game.max_num(), game.get_sum(), game.get_merge_score()
+    
+'''
+encode_state:
+arguments: board - a  4x4 2D array of the game board
+returns a one-hot encoded array of the state of the board
+'''
+def encode_state(board):
+  board_flat = [0 if e == 0 else int(math.log(e, 2)) for e in board.flatten()]
+  board_flat = torch.LongTensor(board_flat)
+  board_flat = F.one_hot(board_flat, num_classes=16).float().flatten()
+  board_flat = board_flat.reshape(1, 4, 4, 16).permute(0, 3, 1, 2)
+#   print (f"board_flat: {board_flat.shape}")
+  return board_flat
 
