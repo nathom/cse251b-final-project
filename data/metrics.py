@@ -115,6 +115,10 @@ def hist_merge_scores(merge_scores, fname, title_suf = "", bs = 2000):
     # Remove the empty cells before plotting
     merge_scores, score_count = zero_remover(merge_scores, count/total_games)
 
+    '''img_width = 10 if len(merge_scores) <= 16 else 10 + int(len(merge_scores) / 2 - 16)
+    merge_scores = merge_scores[10:len(merge_scores) - 10]
+    score_count = score_count[10:len(score_count) - 10]'''
+
     plt.figure(figsize=(10, 6))
     plt.bar(merge_scores, score_count, label='Merge Scores', color='skyblue')
     plt.xlabel('Game')

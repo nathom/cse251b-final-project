@@ -124,8 +124,11 @@ csv_list = [("./data/monte_carlo_branch=50_ngames=100_method=0.csv", "branches_1
             ("./data/monte_carlo_branch=250_ngames=100_method=3.csv", "branches_400_games_20", 400)]
 # mcts_methods_bar_graph("mcts", csv_list)
 
+BEST_MCTS = "./data/rollout_best=250_games=100_method=3.csv"
+BEST_TUPLE = "./data/tuple_network_ngames=100.csv"
+
 # Best mcts rollout and method.
-csv_info = csvReader("./data/rollout_best=250_games=100_method=3.csv")
+csv_info = csvReader(BEST_TUPLE)
 n = len(csv_info) # Should be 100
 
 max_val, merge_scores, num_merges, tiles_hits = [], [], [], []
@@ -135,7 +138,11 @@ for d in csv_info:
     num_merges.append(d['Number of Merges'])
     tiles_hits.append(d['Losing Configuration'])
 
-hist_max_val(max_val, "mcts_100_trials", title_suf="MCTS")
-hist_merge_scores(merge_scores, "mcts_100_trials", title_suf="MCTS")
-hist_num_merges(num_merges, "mcts_100_trials", title_suf="MCTS")
-hist_tiles(tiles_hits, "mcts_100_trials", title_suf="MCTS", exponent=True)
+
+title = "tuple_100_trials"
+name = "Tuple Network"
+
+hist_max_val(max_val, title, title_suf="MCTS")
+hist_merge_scores(merge_scores, title, title_suf="MCTS", bs=40000)
+hist_num_merges(num_merges, title, title_suf="MCTS", bs=1000)
+hist_tiles(tiles_hits, title, title_suf="MCTS", exponent=True)
