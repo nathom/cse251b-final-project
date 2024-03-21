@@ -1,10 +1,12 @@
 import torch.nn as nn
+import torch
 import numpy as np
 import torch.optim as optim
 
 
 class DeepQNetwork(nn.Module):
     def __init__(self, n_observations, n_actions, batch_size):
+        super(DeepQNetwork, self).__init__()
         # setting up some hyperparameters
         self.lr = 0.001
         self.gamma = 0.99
@@ -35,11 +37,13 @@ class DeepQNetwork(nn.Module):
 
         return x
     
-    def execute_Action(self, current_state):
-        if np.random.uniform(0,1) < self.epsilon:
-            return np.random.choice(4,1)
-        q_values = self.forward(current_state)
-        return np.argmax(q_values)
+    def execute_action(self, current_state):
+        with torch.no_grad():
+            if np.random.uniform(0,1) < self.epsilon:
+                return np.random.choice(4,1)
+            #print(f"size of curr: {current_state.size()}" )
+            q_values = self.forward(current_state)
+            return np.argmax(q_values)
 
     def update_epsilon(self):
         self.epsilon = self.epsilon * np.exp(-self.epsilon_dec)   
