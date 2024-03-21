@@ -16,6 +16,9 @@
  * of n-tuple networks for 2048." International Conference on Computers and
  * Games. Springer International Publishing, 2016.
  */
+#include <assert.h>
+#include <unistd.h>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -36,7 +39,7 @@
  */
 std::ostream &info = std::cout;
 std::ostream &error = std::cerr;
-std::ostream &debug = std::cout;
+std::ostream &debug = *(new std::ofstream);
 
 /**
  * 64-bit bitboard implementation for 2048
@@ -378,6 +381,87 @@ class board {
 
    private:
     uint64_t raw;
+    // this function receives 2 pointers (indicated by *) so it can set their
+    // values
+    static void getColors(uint8_t value, uint8_t scheme, uint8_t *foreground,
+                          uint8_t *background)
+    {
+        uint8_t original[] = {
+            8, 255, 1, 255, 2, 255, 3, 255, 4, 255, 5, 255, 6, 255, 7, 255, 9,
+            0, 10,  0, 11,  0, 12,  0, 13,  0, 14,  0, 255, 0, 255, 0};
+        uint8_t blackwhite[] = {232, 255, 234, 255, 236, 255, 238, 255,
+                                240, 255, 242, 255, 244, 255, 246, 0,
+                                248, 0,   249, 0,   250, 0,   251, 0,
+                                252, 0,   253, 0,   254, 0,   255, 0};
+        uint8_t bluered[] = {235, 255, 63,  255, 57,  255, 93,  255,
+                             129, 255, 165, 255, 201, 255, 200, 255,
+                             199, 255, 198, 255, 197, 255, 196, 255,
+                             196, 255, 196, 255, 196, 255, 196, 255};
+        uint8_t *schemes[] = {original, blackwhite, bluered};
+        // modify the 'pointed to' variables (using a * on the left hand of the
+        // assignment)
+        *foreground = *(schemes[scheme] + (1 + value * 2) % sizeof(original));
+        *background = *(schemes[scheme] + (0 + value * 2) % sizeof(original));
+        // alternatively we could have returned a struct with two variables
+    }
+    static uint8_t getDigitCount(uint32_t number)
+    {
+        uint8_t count = 0;
+        do {
+            number /= 10;
+            count += 1;
+        } while (number);
+        return count;
+    }
+
+    uint64_t squareAt(uint8_t x, uint8_t y) const
+    {
+        assert(x < 4 && y < 4 && x >= 0 && y >= 0);
+        return at(y * 4 + x);
+    }
+
+   public:
+    void drawBoard(uint32_t score) const
+    {
+        uint8_t x, y, fg, bg;
+        printf("\033[H");  // move cursor to 0,0
+        printf("2048.c %17d pts\n\n", score);
+        for (y = 0; y < 4; y++) {
+            for (x = 0; x < 4; x++) {
+                // send the addresses of the foreground and background
+                // variables, so that they can be modified by the getColors
+                // function
+                getColors(squareAt(x, y), 0, &fg, &bg);
+                printf("\033[38;5;%d;48;5;%dm", fg, bg);  // set color
+                printf("       ");
+                printf("\033[m");  // reset all modes
+            }
+            printf("\n");
+            for (x = 0; x < 4; x++) {
+                getColors(squareAt(x, y), 0, &fg, &bg);
+                printf("\033[38;5;%d;48;5;%dm", fg, bg);  // set color
+                if (squareAt(x, y) != 0) {
+                    uint32_t number = 1 << squareAt(x, y);
+                    uint8_t t = 7 - getDigitCount(number);
+                    printf("%*s%u%*s", t - t / 2, "", number, t / 2, "");
+                } else {
+                    printf("   ·   ");
+                }
+                printf("\033[m");  // reset all modes
+            }
+            printf("\n");
+            for (x = 0; x < 4; x++) {
+                getColors(squareAt(x, y), 0, &fg, &bg);
+                printf("\033[38;5;%d;48;5;%dm", fg, bg);  // set color
+                printf("       ");
+                printf("\033[m");  // reset all modes
+            }
+            printf("\n");
+        }
+        printf("\n");
+        printf("        ←,↑,→,↓ or q        \n");
+        printf("\033[A");  // one line up
+    }
 };
 
 /**
@@ -633,12 +717,15 @@ class move {
         : opcode(opcode), score(-1), esti(-std::numeric_limits<float>::max())
     {
     }
+
     move(const board &b, int opcode = -1)
         : opcode(opcode), score(-1), esti(-std::numeric_limits<float>::max())
     {
         assign(b);
     }
+
     move(const move &) = default;
+
     move &operator=(const move &) = default;
 
    public:
@@ -800,14 +887,15 @@ class learning {
     {
         move best(b);
         move moves[4] = {move(b, 0), move(b, 1), move(b, 2), move(b, 3)};
-        for (move &move : moves) {
-            if (move.is_valid()) {
-                move.set_value(move.reward() + estimate(move.afterstate()));
-                if (move.value() > best.value()) {
-                    best = move;
+        for (move &cur : moves) {
+            if (cur.is_valid()) {
+                // key function: .afterstate, estimate
+                cur.set_value(cur.reward() + estimate(cur.afterstate()));
+                if (cur.value() > best.value()) {
+                    best = cur;
                 }
             }
-            debug << "test " << move;
+            debug << "test " << cur;
         }
         return best;
     }
@@ -829,7 +917,10 @@ class learning {
         for (path.pop_back() /* terminal state */; path.size();
              path.pop_back()) {
             move &move = path.back();
+            // error between future value of reward and current esimate, like
+            // -gradient
             float error = target - estimate(move.afterstate());
+            //
             target = move.reward() + update(move.afterstate(), alpha * error);
             debug << "update error = " << error << " for" << std::endl
                   << move.afterstate();
@@ -974,9 +1065,14 @@ int main(int argc, const char *argv[])
     float alpha = 0.1;
     size_t total = 100000;
     unsigned seed = 0;
+    const std::string model_path = "saved_model_" + std::to_string(total) +
+                                   "_" + std::to_string(alpha) + "_" +
+                                   std::to_string(seed);
+
     info << "alpha = " << alpha << std::endl;
     info << "total = " << total << std::endl;
     info << "seed = " << seed << std::endl;
+    info << "saving model to " << model_path << std::endl;
     std::srand(seed);
 
     // initialize the features of the 4x6-tuple network
@@ -986,7 +1082,7 @@ int main(int argc, const char *argv[])
     tdl.add_feature(new pattern({4, 5, 6, 8, 9, 10}));
 
     // restore the model from file
-    tdl.load("");
+    tdl.load(model_path);
 
     // train the model
     std::vector<move> path;
@@ -1000,6 +1096,7 @@ int main(int argc, const char *argv[])
         state.init();
         while (true) {
             debug << "state" << std::endl << state;
+            // selection of move
             move best = tdl.select_best_move(state);
             path.push_back(best);
 
@@ -1011,17 +1108,21 @@ int main(int argc, const char *argv[])
             } else {
                 break;
             }
+            state.drawBoard(score);
+            usleep(1000 * 20);
         }
         debug << "end episode" << std::endl;
 
         // update by TD(0)
+        // update weights (learning)
         tdl.learn_from_episode(path, alpha);
+        // print stats
         tdl.make_statistic(n, state, score);
         path.clear();
     }
 
     // store the model into file
-    tdl.save("");
+    tdl.save(model_path);
 
     return 0;
 }
