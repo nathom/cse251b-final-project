@@ -142,7 +142,7 @@ for d in csv_info:
 title = "tuple_100_trials"
 name = "Tuple Network"
 
-hist_max_val(max_val, title, title_suf="MCTS")
-hist_merge_scores(merge_scores, title, title_suf="MCTS", bs=40000)
-hist_num_merges(num_merges, title, title_suf="MCTS", bs=1000)
-hist_tiles(tiles_hits, title, title_suf="MCTS", exponent=True)
+hist_max_val(max_val, title, title_suf="Tuple Network")
+hist_merge_scores(merge_scores, title, title_suf="Tuple Network", bs=40000)
+hist_num_merges(num_merges, title, title_suf="Tuple Network", bs=1000)
+hist_tiles(tiles_hits, title, title_suf="Tuple Network", exponent=True)
