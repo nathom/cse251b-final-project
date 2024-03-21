@@ -41,6 +41,12 @@ class Game2048:
             output += str(row) + "\n"
         return output
 
+    def game_reset(self):
+        self.matrix = np.zeros((4, 4), dtype=np.int64)
+        self.matrix[random.randint(0, 3)][random.randint(0, 3)] = random.choice([2, 4])
+        self.game_end = False
+        self.merge_score = 0
+        
     def check_game(self):
         # If there is at least one empty square
         self.game_end = not (
