@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import sys
 
 # Define lists to store data
 games = []
@@ -7,9 +8,10 @@ percent_2048 = []
 percent_4096 = []
 percent_8192 = []
 percent_8192 = []
+percent_16384 = []
 
 # Read data from file
-with open('train_data.txt', 'r') as file:
+with open(sys.argv[1], 'r') as file:
     lines = file.readlines()
     for line in lines:
         # Check if the line contains data regarding games
@@ -36,19 +38,30 @@ with open('train_data.txt', 'r') as file:
             percent_8192.append(float(line.split()[1].strip('%')))
             while (len(percent_8192) < len(games)):
                 percent_8192.append(0)
+        elif '16384' in line:
+            # Extract percentage achieved for 4096 tile
+            percent_16384.append(float(line.split()[1].strip('%')))
+            while (len(percent_16384) < len(games)):
+                percent_16384.append(0)
 
+max_len = max(len(games), len(percent_1024), len(percent_2048), len(percent_4096), len(percent_8192))
+percent_1024 += [percent_1024[-1]] * (max_len - len(percent_1024))
+percent_2048 += [percent_2048[-1]] * (max_len - len(percent_2048))
+percent_4096 += [percent_4096[-1]] * (max_len - len(percent_4096))
+percent_8192 += [percent_8192[-1]] * (max_len - len(percent_8192))
+percent_16384 += [percent_16384[-1]] * (max_len - len(percent_16384))
 
 # Plotting
-plt.plot(games, percent_1024, marker='o', label='1024')
-plt.plot(games, percent_2048, marker='o', label='2048')
-plt.plot(games, percent_4096, marker='o', label='4096')
-plt.plot(games, percent_8192, marker='o', label='8192')
-# plt.plot(games, percent_16384, marker='o', label='8192')
+plt.plot(games, percent_1024, label='1024')
+plt.plot(games, percent_2048, label='2048')
+plt.plot(games, percent_4096, label='4096')
+plt.plot(games, percent_8192, label='8192')
+plt.plot(games, percent_16384, label='16384')
 
 # Adding labels and title
 plt.xlabel('Simulated Games')
-plt.ylabel('Tile achieved')
-plt.title('Games Simulated vs Maximum Tile Achieved')
+plt.ylabel('Percent Games')
+plt.title('Games Simulated vs Percent Games Reached Tile')
 plt.legend()
 
 # Displaying the plot
