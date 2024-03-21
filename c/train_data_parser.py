@@ -1,6 +1,8 @@
 import re
 import sys
+import matplotlib.pyplot as plt
 
+path = sys.argv[1]
 
 def paragraphs(s):
     return s.split("\n\n")
@@ -27,13 +29,67 @@ def parse_paragraph(p):
     return avg, max, items
 
 
-def main(path):
-    with open(path) as f:
-        s = f.read()
-        info = [parse_paragraph(p) for p in paragraphs(s)]
-        print(info)
+with open(path) as f:
+    s = f.read()
+    info = [parse_paragraph(p) for p in paragraphs(s)]
+    avgList = []
+    maxList = []
 
+    # from percent1 values
+    f2048 = {}
+    for i in range(16):
+        f2048[2**i] = [0] * len(info)
+ 
+    # from percent2 values
+    s2048 = {}
+    for i in range(16):
+        s2048[2**i] = [0] * len(info)
 
-if __name__ == "__main__":
-    assert len(sys.argv) > 1, "Missing file path"
-    main(sys.argv[1])
+    for i, (avg, max, tupleList) in enumerate(info):
+        avgList.append(avg)
+        maxList.append(max)
+        for tile, percent1, percent2 in tupleList:
+            f2048[tile][i] = percent1
+            s2048[tile][i] = percent2
+
+if sys.argv[2] == 'am':
+    expertLevelHuman = [100000] * len(info)
+    plt.plot(avgList, label='Average')
+    # plt.plot(maxList, label='Max')
+    plt.plot(expertLevelHuman, linestyle='dashed')
+    plt.text(2000, 105000, 'Expert Level Human')
+
+    plt.xlabel('Thousands of Games')
+    plt.ylabel('Score')
+    plt.title('Games versus Score')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+# first percent
+if sys.argv[2] == 'f':
+    plt.plot(f2048[2048], label='2048')
+    plt.plot(f2048[4096], label='4096')
+    plt.plot(f2048[8192], label='8192')
+    plt.plot(f2048[16384], label='16384')
+
+    plt.xlabel('Thousands of Games')
+    plt.ylabel('Tile Achieved')
+    plt.title('Games versus Tile Achieved')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+# second percent
+if sys.argv[2] == 's':
+    plt.plot(s2048[2048], label='2048')
+    plt.plot(s2048[4096], label='4096')
+    plt.plot(s2048[8192], label='8192')
+    plt.plot(s2048[16384], label='16384')
+
+    plt.xlabel('Thousands of Games')
+    plt.ylabel('Percent Games with Losing Tile')
+    plt.title('Games versus Losing Tile')
+    plt.grid(True)
+    plt.legend()
+    plt.show()

@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import sys
 
 # Define lists to store data
 avg = []
@@ -6,7 +7,7 @@ games = []
 max = []
 
 # Read data from file
-with open('train_data.txt', 'r') as file:
+with open(sys.argv[1], 'r') as file:
     lines = file.readlines()
     for line in lines:
         if "avg" in line:
