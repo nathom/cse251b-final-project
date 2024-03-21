@@ -1010,6 +1010,7 @@ class learning {
             }
             scores.clear();
             maxtile.clear();
+            info << std::endl;  // extra newline for easier parsing
         }
     }
 
@@ -1278,16 +1279,20 @@ int main(int argc, const char *argv[])
         // tdl.add_feature(new pattern({0, 1, 2, 4, 5, 6}));
         // tdl.add_feature(new pattern({4, 5, 6, 8, 9, 10}));
 
-        tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
-        tdl.add_feature(new pattern({4, 5, 6, 7, 8, 9}));
-        tdl.add_feature(new pattern({0, 1, 2, 4, 5, 6}));
-        tdl.add_feature(new pattern({4, 5, 6, 8, 9, 10}));
+        // add_feature(pattern({0, 1, 2, 3, 4, 5}))
+        //     add_feature(pattern({4, 5, 6, 7, 8, 9}))
+        //         add_feature(pattern({0, 1, 2, 4, 5, 6}))
+        //             add_feature(pattern({4, 5, 6, 8, 9, 10}))
 
         // restore the model from file
         if (!weight_path.empty()) {
             std::cout << "loading model from " << weight_path << std::endl;
             tdl.load(weight_path);
         } else {
+            tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
+            tdl.add_feature(new pattern({4, 5, 6, 7, 8, 9}));
+            tdl.add_feature(new pattern({0, 1, 2, 4, 5, 6}));
+            tdl.add_feature(new pattern({4, 5, 6, 8, 9, 10}));
             std::cout << "training model from scratch!" << std::endl;
         }
         if (display) {
