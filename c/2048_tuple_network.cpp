@@ -17,9 +17,11 @@
  * Games. Springer International Publishing, 2016.
  */
 #include <assert.h>
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
+#define WINDOWS
+#endif
 
-#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
-      defined(__NT__))
+#ifndef WINDOWS
 #include <termios.h>  // defines: termios, TCSANOW, ICANON, ECHO
 #include <unistd.h>
 #endif
@@ -506,8 +508,7 @@ class board {
 
 void setBufferedInput(bool enable)
 {
-#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
-      defined(__NT__))
+#ifndef WINDOWS
     static bool enabled = true;
     static struct termios old;
     struct termios n;
@@ -979,7 +980,7 @@ class learning {
      *  { (s0,s0',a0,r0), (s1,s1',a1,r1), (s2,x,x,x) }
      *  note that the last record contains only a terminal state
      */
-    void learn_from_episode(std::vector<move> &path, float alpha = 0.1) const
+    void backward(std::vector<move> &path, float alpha = 0.1) const
     {
         float target = 0;
         for (path.pop_back() /* terminal state */; path.size();
@@ -1016,7 +1017,7 @@ class learning {
      * win rate of 8192-tile '22.4%': 22.4% (224 games) terminated with
      * 8192-tiles (the largest) in last 1000 games
      */
-    void make_statistic(size_t n, const board &b, int score, int unit = 1000)
+    void print_stats(size_t n, const board &b, int score, int unit = 1000)
     {
         scores.push_back(score);
         maxtile.push_back(0);
@@ -1168,6 +1169,16 @@ class Policy {
     virtual ~Policy() = default;
 };
 
+class Random : public Policy {
+   public:
+    Random() {}
+
+    virtual move next_move(board const &b) const override
+    {
+        return move(b, rand() % 4);
+    }
+};
+
 class TupleNet : public Policy {
    public:
     learning tld;
@@ -1308,8 +1319,7 @@ void play(std::vector<std::string> args)
         if (diff >= 0) {
             score += diff;
             b.draw(score);
-#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
-      defined(__NT__))
+#ifndef WINDOWS
             usleep(150 * 1000);  // 150 ms
 #endif
             b.popup();
@@ -1352,6 +1362,7 @@ void signal_callback_handler(int signum)
     // make cursor visible, reset all modes
     printf("\033[?25h\033[m");
     if (!save_path.empty()) {
+        info << "Saving to " << save_path << std::endl;
         tdl.save(save_path);
     }
     exit(signum);
@@ -1381,8 +1392,7 @@ int main(int argc, const char *argv[])
     }
     bool const display = args[1] == "true";
 
-#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
-      defined(__NT__))
+#ifndef WINDOWS
     int const update_ms = 5;
 #endif
 
@@ -1390,9 +1400,9 @@ int main(int argc, const char *argv[])
     int const ngames = stoi(args[3]);
     constexpr static int METHOD = 2;
 
-#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
-      defined(__NT__))
+#ifndef WINDOWS
     signal(SIGINT, signal_callback_handler);
+    info << "Registered SIGINT handler" << std::endl;
 #endif
 
     if (display) {
@@ -1433,8 +1443,7 @@ int main(int argc, const char *argv[])
                     score += reward;
                     if (display) {
                         b.draw(score);
-#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
-      defined(__NT__))
+#ifndef WINDOWS
                         usleep(1000 * update_ms);
 #endif
                     }
@@ -1462,27 +1471,15 @@ int main(int argc, const char *argv[])
         } else {
             std::cout << "warning: no save path provided" << std::endl;
         }
-        float alpha = 0.1;
-        size_t total = ngames;
-        unsigned seed = 0;
+        float alpha = 0.001;
+        size_t const total = ngames;
+        unsigned const seed = static_cast<unsigned>(time(0));
 
         info << "alpha = " << alpha << std::endl;
         info << "total = " << total << std::endl;
         info << "seed = " << seed << std::endl;
         info << "saving model to " << save_path << std::endl;
         std::srand(seed);
-
-        // initialize the features of the 4x6-tuple network
-        // Original features
-        // tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
-        // tdl.add_feature(new pattern({4, 5, 6, 7, 8, 9}));
-        // tdl.add_feature(new pattern({0, 1, 2, 4, 5, 6}));
-        // tdl.add_feature(new pattern({4, 5, 6, 8, 9, 10}));
-
-        // add_feature(pattern({0, 1, 2, 3, 4, 5}))
-        //     add_feature(pattern({4, 5, 6, 7, 8, 9}))
-        //         add_feature(pattern({0, 1, 2, 4, 5, 6}))
-        //             add_feature(pattern({4, 5, 6, 8, 9, 10}))
 
         // restore the model from file
         tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
@@ -1511,6 +1508,14 @@ int main(int argc, const char *argv[])
         Logger::write_csv_header(csv);
 
         clock_t start, end;
+        // Learning rate scheduling
+        // If performance doesnt improve for avg_period games,
+        // multiply LR by `lr_cut_factor`
+        uint const lr_update_period = 1u << 14;  // ~65000
+        float const lr_cut_factor = 0.5;
+
+        uint last_avg_score = 0, cur_avg_score = 0;
+
         for (size_t n = 1; n <= total; n++) {
             board state;
             int score = 0;
@@ -1537,8 +1542,7 @@ int main(int argc, const char *argv[])
                 }
                 if (display) {
                     state.draw(score);
-#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
-      defined(__NT__))
+#ifndef WINDOWS
                     usleep(1000 * update_ms);
 #endif
                 }
@@ -1548,19 +1552,77 @@ int main(int argc, const char *argv[])
             Logger::write_csv_row(csv, n, moves, score, (1u << state.max()),
                                   state.sum(), moves * 0.99, state, diff);
             // debug << "end episode" << std::endl;
-
-            // update by TD(0)
-            // update weights (learning)
-            tdl.learn_from_episode(path, alpha);
-            // print stats
-            tdl.make_statistic(n, state, score);
+            tdl.backward(path, alpha);
+            tdl.print_stats(n, state, score);
             path.clear();
-        }
 
+            cur_avg_score += score;
+
+            // Schedule learning rate
+            if (n % lr_update_period == 0) {
+                if (last_avg_score > cur_avg_score) {
+                    float const pre_alpha = alpha;
+                    alpha *= lr_cut_factor;
+                    std::cout << "Cutting alpha from " << pre_alpha << " to "
+                              << alpha << std::endl;
+                }
+                last_avg_score = cur_avg_score;
+                cur_avg_score = 0;
+            }
+        }
         // store the model into file
         if (!save_path.empty()) {
             tdl.save(save_path);
         }
+    } else if (cmd == "random") {
+        std::stringstream ss;
+        ss << "data_random=" << niter << "_ngames=" << ngames
+           << "_method=" << METHOD << ".csv";
+        std::string filename = ss.str();
+
+        // Opening file
+        std::ofstream csv(filename);
+        Logger::write_csv_header(csv);
+
+        for (int i = 0; i < ngames; i++) {
+            Random runner;
+            board b;
+            b.init();
+            int score = 0;
+            int fails = 0;
+            int moves = 0;
+
+            clock_t start, end;
+            start = clock();
+            while (fails < 4) {
+                move next_move = runner.next_move(b);
+                moves++;
+
+                int reward = next_move.reward();
+                if (reward < 0) {
+                    fails++;
+                } else {
+                    fails = 0;
+                    b = next_move.afterstate();
+                    b.popup();
+                    score += reward;
+                    if (display) {
+                        b.draw(score);
+#ifndef WINDOWS
+                        usleep(1000 * update_ms);
+#endif
+                    }
+                }
+            }
+            end = clock();
+            std::cout << "Game " << i << ": Final score: " << score
+                      << " max tile: " << (1u << b.max()) << std::endl;
+
+            double diff = ((double)(end - start)) / CLOCKS_PER_SEC;
+            Logger::write_csv_row(csv, i, moves, score, (1u << b.max()),
+                                  b.sum(), moves * 0.99, b, diff);
+        }
     }
+
     return 0;
 }
