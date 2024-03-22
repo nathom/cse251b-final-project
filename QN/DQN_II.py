@@ -14,12 +14,14 @@ import tqdm
 import matplotlib.pyplot as plt
 
 
+
 # add the path to the game file 
 import sys
 # append the parent directory to the path
 sys.path.append('..')
 
 from DQN import *
+from metrics import *
 from rl.game_2048 import Game2048
 
 device = None
@@ -232,12 +234,12 @@ def Q_run():
     batch_size = 32 
     policy = DeepQNetwork(batch_size=batch_size).to(device)
     target = DeepQNetwork(batch_size=batch_size).to(device)
-    policy.lr = 5e-5
+    policy.lr = 9e-5
     # optimizer = optim.SGD(model.parameters(), lr=model.lr, momentum=0.9)
     optimizer = optim.Adam(policy.parameters(), lr=policy.lr)
     criterion  = nn.MSELoss().to(device)
     # criterion.requires_grad = True
-    n_ep, n_iter = 1000 ,500
+    n_ep, n_iter = 200 ,500
     Checkpoint = "DQN_weights"
 
     target.load_state_dict(policy.state_dict())
@@ -380,7 +382,7 @@ if __name__=="__main__":
     Q = DeepQNetwork(batch_size=batch_size).to(device)
     Q.load_state_dict(torch.load("./checkpoint/target_net.pth"))
 
-    num_trials =10
+    num_trials = 100
     max_val_results = [0] * num_trials
     total_sum_results = [0] * num_trials
     total_merge_score = [0] * num_trials
@@ -408,4 +410,13 @@ if __name__=="__main__":
     print("merge score avg: " + str(total_merge_avg))
     print()
     print("time taken: ", str(timedelta(seconds=(end_time - start_time))))
+
+    fname =  "DQN" + str(num_trials) + "_trials"
+    title = "DQN"
+
+    hist_max_val(max_val_results,fname, title_suf = title)
+    #hist_num_merges(num_merge,fname,title_suf = title, bs = 100)
+    hist_merge_scores(total_merge_score, fname, title_suf = title, bs = 2000)
+    #hist_tiles(tile_array, fname, title_suf = title)
+
     
