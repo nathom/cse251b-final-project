@@ -18,7 +18,9 @@
  */
 #include <assert.h>
 
-#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
+#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
+      defined(__NT__))
+#include <termios.h>  // defines: termios, TCSANOW, ICANON, ECHO
 #include <unistd.h>
 #endif
 
@@ -117,6 +119,17 @@ class board {
             s += (1u << at(i));
         }
         return s;
+    }
+
+    bool ended() const
+    {
+        for (int i = 0; i < 4; i++) {
+            board b_copy = *this;
+            if (b_copy.move(i) != -1) {
+                return false;
+            }
+        }
+        return true;
     }
 
    public:
@@ -490,6 +503,34 @@ class board {
         printf("\033[A");  // one line up
     }
 };
+
+void setBufferedInput(bool enable)
+{
+#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
+      defined(__NT__))
+    static bool enabled = true;
+    static struct termios old;
+    struct termios n;
+
+    if (enable && !enabled) {
+        // restore the former settings
+        tcsetattr(STDIN_FILENO, TCSANOW, &old);
+        // set the new state
+        enabled = true;
+    } else if (!enable && enabled) {
+        // get the terminal settings for standard input
+        tcgetattr(STDIN_FILENO, &n);
+        // we want to keep the old setting to restore them at the end
+        old = n;
+        // disable canonical mode (buffered i/o) and local echo
+        n.c_lflag &= (~ICANON & ~ECHO);
+        // set the new settings immediately
+        tcsetattr(STDIN_FILENO, TCSANOW, &n);
+        // set the new state
+        enabled = false;
+    }
+#endif
+}
 
 /**
  * feature and weight table for temporal difference learning
@@ -1094,9 +1135,10 @@ class Logger {
     }
 
     // Function to write data to a CSV file
-    static void write_csv_row(std::ofstream &file, int game_number, int num_moves,
-                       int score, int largest_tile, int sum_of_tiles,
-                       int num_merges, const board &losing_config, double time)
+    static void write_csv_row(std::ofstream &file, int game_number,
+                              int num_moves, int score, int largest_tile,
+                              int sum_of_tiles, int num_merges,
+                              const board &losing_config, double time)
     {
         std::stringstream ss;
         ss << game_number << ',' << num_moves << ',' << score << ','
@@ -1120,11 +1162,28 @@ class Logger {
     }
 };
 
+class Policy {
+   public:
+    virtual move next_move(board const &b) const = 0;
+    virtual ~Policy() = default;
+};
+
+class TupleNet : public Policy {
+   public:
+    learning tld;
+    TupleNet(std::string weight_path) { tld.load(weight_path); }
+
+    virtual move next_move(board const &b) const override
+    {
+        return tld.select_best_move(b);
+    }
+};
+
 template <int Method>
-class MonteCarlo {
+class MonteCarlo : public Policy {
    public:
     MonteCarlo(int num_iter) : num_iter(num_iter) {}
-    move next_move(board const &b) const
+    virtual move next_move(board const &b) const override
     {
         int movn = monte_carlo_iter(b);
         return move(b, movn);
@@ -1189,6 +1248,100 @@ class MonteCarlo {
         return max_i;
     }
 };
+void play(std::vector<std::string> args)
+{
+    std::string runner_arg = args[1];
+    std::unique_ptr<Policy> runner;
+    if (args[1] == "mc") {
+        runner = std::make_unique<MonteCarlo<2>>(1000);
+    } else if (args[1] == "tuple") {
+        if (args.size() < 3) {
+            throw std::runtime_error("specify weights path");
+        }
+        runner = std::make_unique<TupleNet>(args[2]);
+    } else {
+        throw std::runtime_error("invalid path");
+    }
+    board b;
+    uint32_t score = 0;
+    int diff = -1;
+    char c;
+
+    // make cursor invisible, erase entire screen
+    printf("\033[?25l\033[2J");
+
+    b.init();
+    b.draw(score);
+    setBufferedInput(false);
+    while (true) {
+        move optimal = runner->next_move(b);
+        std::cout << optimal.action() << std::endl;
+        c = getchar();
+        if (c == -1) {
+            puts("\nError! Cannot read keyboard input!");
+            break;
+        }
+        switch (c) {
+        case 97:   // 'a' key
+        case 104:  // 'h' key
+        case 68:   // left arrow
+            diff = b.move_left();
+            break;
+        case 100:  // 'd' key
+        case 108:  // 'l' key
+        case 67:   // right arrow
+            diff = b.move_right();
+            break;
+        case 119:  // 'w' key
+        case 107:  // 'k' key
+        case 65:   // up arrow
+            diff = b.move_up();
+            break;
+        case 115:  // 's' key
+        case 106:  // 'j' key
+        case 66:   // down arrow
+            diff = b.move_down();
+            break;
+        default:
+            diff = -1;
+        }
+        if (diff >= 0) {
+            score += diff;
+            b.draw(score);
+#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
+      defined(__NT__))
+            usleep(150 * 1000);  // 150 ms
+#endif
+            b.popup();
+            b.draw(score);
+            if (b.ended()) {
+                printf("         GAME OVER          \n");
+                break;
+            }
+        }
+        if (c == 'q') {
+            printf("        QUIT? (y/n)         \n");
+            c = getchar();
+            if (c == 'y') {
+                break;
+            }
+            b.draw(score);
+        }
+        if (c == 'r') {
+            printf("       RESTART? (y/n)       \n");
+            c = getchar();
+            if (c == 'y') {
+                b.init();
+                score = 0;
+            }
+            b.draw(score);
+        }
+    }
+    setBufferedInput(true);
+
+    // make cursor visible, reset all modes
+    printf("\033[?25h\033[m");
+}
 
 learning tdl;
 std::string save_path;
@@ -1212,41 +1365,48 @@ int main(int argc, const char *argv[])
         "Usage: 2048 <mc/tuple> <display: true/false> <num iter> "
         "<num games> [model path | none] [save path | none]";
 
-    if (args.size() < 4 || args.size() > 6) {
+    if (args.size() < 1) {
         std::cerr << help_msg << std::endl;
         return 1;
     }
 
     std::string const cmd = args[0];
+    if (cmd == "play") {
+        play(args);
+        return 0;
+    }
     if (cmd == "help" || cmd == "h") {
         std::cerr << help_msg << std::endl;
         return 0;
     }
     bool const display = args[1] == "true";
 
-    #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
+#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
+      defined(__NT__))
     int const update_ms = 5;
-    #endif
+#endif
 
     int const niter = stoi(args[2]);
     int const ngames = stoi(args[3]);
     constexpr static int METHOD = 2;
 
-    #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
+#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
+      defined(__NT__))
     signal(SIGINT, signal_callback_handler);
-    #endif
+#endif
 
     if (display) {
         std::cout << "\033[2J" << std::flush;
     }
 
     if (cmd == "mc") {
-        char fn[100] = {0};
+        std::stringstream ss;
+        ss << "data/monte_carlo_branch=" << niter << "_ngames=" << ngames
+           << "_method=" << METHOD << ".csv";
+        std::string filename = ss.str();
 
-        sprintf(fn, "data/monte_carlo_branch=%d_ngames=%d_method=%d.csv",
-                niter, ngames, METHOD);
-        std::ofstream csv;
-        csv.open(fn);
+        // Opening file
+        std::ofstream csv(filename);
         Logger::write_csv_header(csv);
 
         for (int i = 0; i < ngames; i++) {
@@ -1273,9 +1433,10 @@ int main(int argc, const char *argv[])
                     score += reward;
                     if (display) {
                         b.draw(score);
-                        #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
+#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
+      defined(__NT__))
                         usleep(1000 * update_ms);
-                        #endif
+#endif
                     }
                 }
             }
@@ -1284,7 +1445,8 @@ int main(int argc, const char *argv[])
                       << " max tile: " << (1u << b.max()) << std::endl;
 
             double diff = ((double)(end - start)) / CLOCKS_PER_SEC;
-            Logger::write_csv_row(csv, i, moves, score, (1u << b.max()), b.sum(), moves * 0.99, b, diff);
+            Logger::write_csv_row(csv, i, moves, score, (1u << b.max()),
+                                  b.sum(), moves * 0.99, b, diff);
         }
 
         csv.close();
@@ -1323,14 +1485,14 @@ int main(int argc, const char *argv[])
         //             add_feature(pattern({4, 5, 6, 8, 9, 10}))
 
         // restore the model from file
+        tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
+        tdl.add_feature(new pattern({4, 5, 6, 7, 8, 9}));
+        tdl.add_feature(new pattern({0, 1, 2, 4, 5, 6}));
+        tdl.add_feature(new pattern({4, 5, 6, 8, 9, 10}));
         if (!weight_path.empty()) {
             std::cout << "loading model from " << weight_path << std::endl;
             tdl.load(weight_path);
         } else {
-            tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
-            tdl.add_feature(new pattern({4, 5, 6, 7, 8, 9}));
-            tdl.add_feature(new pattern({0, 1, 2, 4, 5, 6}));
-            tdl.add_feature(new pattern({4, 5, 6, 8, 9, 10}));
             std::cout << "training model from scratch!" << std::endl;
         }
         if (display) {
@@ -1341,11 +1503,11 @@ int main(int argc, const char *argv[])
         std::vector<move> path;
         path.reserve(20000);
 
-        char fn[100] = {0};
+        std::stringstream ss;
+        ss << "data/tuple_network_ngames=" << ngames << ".csv";
+        std::string filename = ss.str();
 
-        sprintf(fn, "data/tuple_network_ngames=%d.csv", ngames);
-        std::ofstream csv;
-        csv.open(fn);
+        std::ofstream csv(filename);
         Logger::write_csv_header(csv);
 
         clock_t start, end;
@@ -1375,14 +1537,16 @@ int main(int argc, const char *argv[])
                 }
                 if (display) {
                     state.draw(score);
-                    #if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__))
+#if !(defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || \
+      defined(__NT__))
                     usleep(1000 * update_ms);
-                    #endif
+#endif
                 }
             }
             end = clock();
             double diff = ((double)(end - start)) / CLOCKS_PER_SEC;
-            Logger::write_csv_row(csv, n, moves, score, (1u << state.max()), state.sum(), moves * 0.99, state, diff);
+            Logger::write_csv_row(csv, n, moves, score, (1u << state.max()),
+                                  state.sum(), moves * 0.99, state, diff);
             // debug << "end episode" << std::endl;
 
             // update by TD(0)
@@ -1398,6 +1562,5 @@ int main(int argc, const char *argv[])
             tdl.save(save_path);
         }
     }
-
     return 0;
 }
