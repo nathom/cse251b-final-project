@@ -1,17 +1,3 @@
-TDL2048-Demo
-alpha = 0.001
-total = 500000
-seed = 1711137905
-saving model to saved_tuple_net_10M.bin
-6-tuple pattern 012345, size = 16777216 (64MB)
-6-tuple pattern 456789, size = 16777216 (64MB)
-6-tuple pattern 012456, size = 16777216 (64MB)
-6-tuple pattern 45689a, size = 16777216 (64MB)
-loading model from saved_tuple_net_3.5M.bin
-6-tuple pattern 012345 is loaded from saved_tuple_net_3.5M.bin
-6-tuple pattern 456789 is loaded from saved_tuple_net_3.5M.bin
-6-tuple pattern 012456 is loaded from saved_tuple_net_3.5M.bin
-6-tuple pattern 45689a is loaded from saved_tuple_net_3.5M.bin
 1000	avg = 179504	max = 365364
 	512	100%	(0.1%)
 	1024	99.9%	(2.2%)
@@ -4233,8 +4219,3 @@ Cutting alpha from 3.90625e-06 to 1.95313e-06
 	4096	97.9%	(6.9%)
 	8192	91%	(39.2%)
 	16384	51.8%	(51.8%)
-
-6-tuple pattern 012345 is saved to saved_tuple_net_10M.bin
-6-tuple pattern 456789 is saved to saved_tuple_net_10M.bin
-6-tuple pattern 012456 is saved to saved_tuple_net_10M.bin
-6-tuple pattern 45689a is saved to saved_tuple_net_10M.bin
