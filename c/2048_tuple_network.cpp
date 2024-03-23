@@ -1577,7 +1577,7 @@ int main(int argc, const char *argv[])
         }
     } else if (cmd == "random") {
         std::stringstream ss;
-        ss << "data_random=" << niter << "_ngames=" << ngames
+        ss << "./data/data_random=" << niter << "_ngames=" << ngames
            << "_method=" << METHOD << ".csv";
         std::string filename = ss.str();
 

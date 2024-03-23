@@ -70,8 +70,6 @@ def hist_num_merges(num_merges,fname, title_suf = "", bs = 50):
     num_merges = [str(x) for x in num_merges]
     # print (np.histogram(num_merges, bins=buckets))
     # print (num_merges, count)
-    plt.xlabel('Number of Merges')
-    plt.ylabel('Normalized Frequency')
 
     # Remove the empty cells before plotting
     num_merges, merge_count = zero_remover(num_merges, count/total_games)
@@ -84,6 +82,8 @@ def hist_num_merges(num_merges,fname, title_suf = "", bs = 50):
         plt.title(f'Number of merges across {total_games} games')
     else :
         plt.title(f'Number of merges across {total_games} games - {title_suf}')
+    plt.xlabel('Number of Merges')
+    plt.ylabel('Normalized Frequency')
     plt.legend()
     plt.grid(axis='y')
 
@@ -121,8 +121,8 @@ def hist_merge_scores(merge_scores, fname, title_suf = "", bs = 2000):
 
     plt.figure(figsize=(10, 6))
     plt.bar(merge_scores, score_count, label='Merge Scores', color='skyblue')
-    plt.xlabel('Game')
-    plt.ylabel('Merge Scores')
+    plt.xlabel('Merge Scores')
+    plt.ylabel('Normalized Frequency')
     if title_suf == "":
         plt.title(f'Merge Scores across {total_games} games')
     else: 

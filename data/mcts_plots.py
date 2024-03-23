@@ -39,6 +39,36 @@ def csvReader(csv_path):
     # List of each entry as a dictionary
     return parsed_data
 
+def csvReaderExpect(csv_path):
+    parsed_data = []
+
+    # Open the CSV file and read its contents
+    with open(csv_path, newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+
+        for row in reader:
+            # Convert elements to appropriate data types
+            game_number = int(row[0])
+            score = int(row[1])
+            largest_tile = int(row[2])
+            sum_of_tiles = int(row[3])
+            num_merges = int(row[4])
+            losing_config = list(map(int, row[5].split(',')))
+
+            # Store the parsed data in a dictionary
+            parsed_data.append({
+                'Game Number': game_number,
+                'Score': score,
+                'Largest Tile': largest_tile,
+                'Sum of Tiles': sum_of_tiles,
+                'Number of Merges': num_merges,
+                'Losing Configuration': losing_config,
+            })
+    
+    # List of each entry as a dictionary
+    return parsed_data
+
 def csv_to_average(csv_path):
     averaged_data = {'avg_num_moves': 0, 'avg_score': 0, 'avg_max_tile': 0, 'avg_sum_tiles': 0, 'avg_time': 0}
     cnt = 0
@@ -109,6 +139,38 @@ def mcts_methods_bar_graph(name, csv_file_names):
         plt.savefig(f"./data/plots/{name}_{m}.png")
         plt.cla()
 
+def metric_booming(BEST, title, name):
+    # Best mcts rollout and method.
+    csv_info = csvReaderExpect(BEST)
+    n = len(csv_info) # Should be 100
+
+    max_val, merge_scores, num_merges, tiles_hits = [], [], [], []
+    for d in csv_info:
+        max_val.append(d['Largest Tile'])
+        merge_scores.append(d['Score'])
+        num_merges.append(d['Number of Merges'])
+        tiles_hits.append(d['Losing Configuration'])
+
+    # bs = 40000 and bs = 1000 when plotting tuple
+    hist_max_val(max_val, title, title_suf=name)
+    hist_merge_scores(merge_scores, title, title_suf=name)
+    hist_num_merges(num_merges, title, title_suf=name)
+    hist_tiles(tiles_hits, title, title_suf=name, exponent=False)
+
+def avg_boomer(data):
+    rate_2048, avg_score, avg_num_merges = 0, 0, 0
+    cnt = len(data)
+
+    for d in data:
+        rate_2048 += 1 if d['Largest Tile'] >= 2048 else 0
+        avg_score += d['Score']
+        avg_num_merges += d['Number of Merges']
+
+    rate_2048 /= cnt
+    avg_score /= cnt
+    avg_num_merges /= cnt
+    print(rate_2048, avg_score, avg_num_merges)
+
 # These paths were called from top level, so you might have to update these if you are in this directory.
 csv_list = [("./data/monte_carlo_branch=50_ngames=100_method=0.csv", "branches_100_games_20", 100),
             ("./data/monte_carlo_branch=50_ngames=100_method=1.csv", "branches_200_games_20", 200),
@@ -124,25 +186,16 @@ csv_list = [("./data/monte_carlo_branch=50_ngames=100_method=0.csv", "branches_1
             ("./data/monte_carlo_branch=250_ngames=100_method=3.csv", "branches_400_games_20", 400)]
 # mcts_methods_bar_graph("mcts", csv_list)
 
+BASELINE = "./data/data_random=1000_ngames=100_method=2.csv"
+BEST_EXPECT = "./data/expectimax_100_trials.csv"
 BEST_MCTS = "./data/rollout_best=250_games=100_method=3.csv"
 BEST_TUPLE = "./data/tuple_network_ngames=100.csv"
 
-# Best mcts rollout and method.
-csv_info = csvReader(BEST_TUPLE)
-n = len(csv_info) # Should be 100
+# metric_booming(BEST_EXPECT, "expectimax_100_trials", "Expectimax")
 
-max_val, merge_scores, num_merges, tiles_hits = [], [], [], []
-for d in csv_info:
-    max_val.append(d['Largest Tile'])
-    merge_scores.append(d['Score'])
-    num_merges.append(d['Number of Merges'])
-    tiles_hits.append(d['Losing Configuration'])
+data1 = csvReader(BASELINE)
+data2 = csvReaderExpect(BEST_EXPECT)
+data3 = csvReader(BEST_MCTS)
+data4 = csvReader(BEST_TUPLE)
 
-
-title = "tuple_100_trials"
-name = "Tuple Network"
-
-hist_max_val(max_val, title, title_suf="Tuple Network")
-hist_merge_scores(merge_scores, title, title_suf="Tuple Network", bs=40000)
-hist_num_merges(num_merges, title, title_suf="Tuple Network", bs=1000)
-hist_tiles(tiles_hits, title, title_suf="Tuple Network", exponent=True)
+# avg_boomer(data1)
