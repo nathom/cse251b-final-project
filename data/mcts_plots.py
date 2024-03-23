@@ -190,6 +190,7 @@ BASELINE = "./data/data_random=1000_ngames=100_method=2.csv"
 BEST_EXPECT = "./data/expectimax_100_trials.csv"
 BEST_MCTS = "./data/rollout_best=250_games=100_method=3.csv"
 BEST_TUPLE = "./data/tuple_network_ngames=100.csv"
+BEST_TUPLE_4M = "./data/tuple_network_ngames100_4M.csv"
 
 # metric_booming(BEST_EXPECT, "expectimax_100_trials", "Expectimax")
 
@@ -197,5 +198,6 @@ data1 = csvReader(BASELINE)
 data2 = csvReaderExpect(BEST_EXPECT)
 data3 = csvReader(BEST_MCTS)
 data4 = csvReader(BEST_TUPLE)
+data5 = csvReader(BEST_TUPLE_4M)
 
-# avg_boomer(data1)
+# avg_boomer(data5)
