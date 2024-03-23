@@ -399,35 +399,42 @@ if __name__ == "__main__":
         if torch.cuda.is_available()
         else ("mps" if torch.backends.mps.is_available() else "cpu")
     )
-
+    print(f"device: {device}")
     parser = argparse.ArgumentParser()
     parser.add_argument("--train_play", help="whether to play using DQN or train it")
     args = parser.parse_args()
 
+    
     if args.train_play == "train":
         Q_run()
+    elif args.train_play != "play":
+        raise ValueError("Must be train or play")
 
     # game = Game2048()
     batch_size = 64
     Q = DeepQNetwork(batch_size=batch_size).to(device)
-    Q.load_state_dict(torch.load("./checkpoint/policy_net_600.pth"))
+    Q.load_state_dict(torch.load("./checkpoint/policy_net.pth",map_location=torch.device('cpu')))
 
     num_trials = 100
     max_val_results = [0] * num_trials
     total_sum_results = [0] * num_trials
     total_merge_score = [0] * num_trials
+    num_merge = [0]* num_trials
+    tile_array = [[0]] * num_trials
     # currently running the game once
     start_time = time.time()
     for i in range(num_trials):
         (
-            max_val_results[i],
-            total_sum_results[i],
-            total_merge_score[i],
+            max_val_results[i], # largest tile
+            total_sum_results[i], # sum of all tiles
+            total_merge_score[i], # merge score
+            num_merge[i], # number of merges
+            tile_array[i] # losing configuration
         ) = Q.play()
-        print("############################################")
-        print(f"max value result {i}: {max_val_results[i]}")
-        print(f"total sum results {i}: {total_sum_results[i]}")
-        print(f"total merge score {i}: {total_merge_score[i]}")
+        # print("############################################")
+        # print(f"max value result {i}: {max_val_results[i]}")
+        # print(f"total sum results {i}: {total_sum_results[i]}")
+        # print(f"total merge score {i}: {total_merge_score[i]}")
 
     end_time = time.time()
 
@@ -441,10 +448,10 @@ if __name__ == "__main__":
     print()
     print("time taken: ", str(timedelta(seconds=(end_time - start_time))))
 
-    fname =  "DQN" + str(num_trials) + "_trials_2"
+    fname =  "DQN" + str(num_trials) + "_trials_2.1"
     title = "DQN"
 
     hist_max_val(max_val_results,fname, title_suf = title)
-    #hist_num_merges(num_merge,fname,title_suf = title, bs = 100)
+    hist_num_merges(num_merge,fname,title_suf = title, bs = 25)
     hist_merge_scores(total_merge_score, fname, title_suf = title, bs = 500)
-    #hist_tiles(tile_array, fname, title_suf = title)
+    hist_tiles(tile_array, fname, title_suf = title)

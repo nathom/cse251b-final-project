@@ -44,7 +44,7 @@ def hist_num_merges(num_merges,fname, title_suf = "", bs = 50):
     
     num_merges, count = np.unique(num_merges, return_counts = True)
     # put the values in buckets of 100
-    print (num_merges, count)
+    #print (num_merges, count)
     # print ("Putting values in buckets of 50")
     min_merges = min(num_merges) 
     min_merges = min_merges - (min_merges % bs)

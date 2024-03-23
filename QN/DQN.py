@@ -123,7 +123,7 @@ class DeepQNetwork(nn.Module):
         # print("Max Square Value: {}".format(game.max_num()))
         # print("Total Square Sum: {}".format(game.get_sum()))
         # print("Total Merge Score: {}".format(game.get_merge_score()))
-        return game.max_num(), game.get_sum(), game.get_merge_score()
+        return game.max_num(), game.get_sum(), game.get_merge_score(),  game.get_num_merges(), game.get_tile_array()
 
 
 """

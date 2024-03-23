@@ -34,6 +34,7 @@ class Game2048:
         self.matrix[random.randint(0, 3)][random.randint(0, 3)] = random.choice([2, 4])
         self.game_end = False
         self.merge_score = 0
+        self.num_merges = 0
 
     def __str__(self):
         output = ""
@@ -111,6 +112,7 @@ class Game2048:
 
         if (matrix_copy != self.matrix).any():
             self.get_number()
+        self.num_merges+=1
         self.check_game()
 
     def move_up(self):
@@ -189,3 +191,10 @@ class Game2048:
                 if self.matrix[i][j] == value:
                     return (i, j)
         return None
+
+    def get_num_merges(self) -> int:
+        return self.num_merges
+
+    def get_tile_array(self):
+        flattened = [item for sublist in self.matrix for item in sublist]
+        return flattened
