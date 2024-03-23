@@ -35,72 +35,115 @@ Create a replay memory buffer
 #                         ('state', 'action', 'next_state', 'reward', 'done'))
 
 
-class ReplayMemory(object):
+# class ReplayMemory(object):
+#     def __init__(self, capacity):
+#         self.memory = list()
+#         self.capacity = capacity
+
+#     def push(self, current_state, best_action, next_state, reward, done):
+#         self.memory.append([current_state, best_action, next_state, reward, done])
+
+#         if len(self.memory) > self.capacity:
+#             self.memory.pop(0)
+
+#     def sample(self, batch_size):
+#         return random.sample(self.memory, batch_size)
+
+#     def __len__(self):
+#         return len(self.memory)
+
+from collections import deque
+
+class ReplayMemory:
     def __init__(self, capacity):
-        self.memory = list()
-        self.capacity = capacity
+        self.memory = deque(maxlen=capacity)
 
-    def push(self, current_state, best_action, next_state, reward, done):
-        self.memory.append([current_state, best_action, next_state, reward, done])
-
-        if len(self.memory) > self.capacity:
-            self.memory.pop(0)
+    def push(self, state, action, next_state, reward, done):
+        self.memory.append((state, action, next_state, reward, done))
 
     def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
+        batch = random.sample(self.memory, batch_size)
+        states, actions, next_states, rewards, dones = zip(*batch)
+        
+        states = torch.cat(states)
+        next_states = torch.cat(next_states)
+        actions = torch.tensor(actions, dtype=torch.int64).to(device)
+        rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
+        dones = torch.tensor(dones, dtype=torch.bool).to(device)
+        
+        return states, actions, next_states, rewards, dones
 
     def __len__(self):
         return len(self.memory)
-
 
 """
 trains the model over a batch from memory 
 """
 
-
 def model_train(policy, target, memory, optimizer, criterion):
-    np.random.shuffle(memory)
-    batch_sample = memory[0 : policy.batch_size]
-    # sample minibatch
-    # print ("---------------------------------")
-    # # print all the actions in the batch
-    # print ([e[1] for e in batch_sample])
-    # print ("---------------------------------")
-
-    # print (batch_sample[0][0].shape)
-    state_batch = torch.stack([e[0] for e in batch_sample]).to(device)
-    # from [batch_size, 1, 4, 4, 16] to [batch_size, 4, 4, 16]
-    state_batch = state_batch.squeeze(1)
-    next_state_batch = torch.stack([e[2] for e in batch_sample]).to(device)
-    next_state_batch = next_state_batch.squeeze(1)
-    reward_batch = torch.tensor([e[3] for e in batch_sample], dtype=torch.float32).to(
-        device
-    )
-    done_batch = torch.tensor([e[4] for e in batch_sample], dtype=torch.bool).to(device)
-    action_batch = torch.tensor([e[1] for e in batch_sample], dtype=torch.int64).to(
-        device
-    )
-
-    # print (f"state_batch: {state_batch.size()} next_state_batch: {next_state_batch.size()} reward_batch: {reward_batch.size()} done_batch: {done_batch.size()} action_batch: {action_batch.size()}")
-    q_current = policy.forward(state_batch)
-    # get the q values for the actions taken
-    q_current = q_current.gather(1, action_batch.unsqueeze(1)).squeeze(1)
-
+    batch_size = policy.batch_size
+    states, actions, next_states, rewards, dones = memory.sample(batch_size)
+    
+    q_current = policy(states).gather(1, actions.unsqueeze(1)).squeeze(1)
+    
     with torch.no_grad():
-        next_q_values = target.forward(next_state_batch).max(1)[0]
-        next_q_values[done_batch] = 0.0
-
-    q_target = reward_batch + policy.gamma * next_q_values
-
-    # print (f"q_current: {q_current.shape} q_target: {q_target.shape}")
-
+        next_q_values = target(next_states).max(1)[0]
+        next_q_values[dones] = 0.0
+        
+    q_target = rewards + policy.gamma * next_q_values
+    
     loss = criterion(q_current, q_target)
-
+    
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-
+    
     return loss.item()
+
+
+# def model_train(policy, target, memory, optimizer, criterion):
+#     np.random.shuffle(memory)
+#     batch_sample = memory[0 : policy.batch_size]
+#     # sample minibatch
+#     # print ("---------------------------------")
+#     # # print all the actions in the batch
+#     # print ([e[1] for e in batch_sample])
+#     # print ("---------------------------------")
+
+#     # print (batch_sample[0][0].shape)
+#     state_batch = torch.stack([e[0] for e in batch_sample]).to(device)
+#     # from [batch_size, 1, 4, 4, 16] to [batch_size, 4, 4, 16]
+#     state_batch = state_batch.squeeze(1)
+#     next_state_batch = torch.stack([e[2] for e in batch_sample]).to(device)
+#     next_state_batch = next_state_batch.squeeze(1)
+#     reward_batch = torch.tensor([e[3] for e in batch_sample], dtype=torch.float32).to(
+#         device
+#     )
+#     done_batch = torch.tensor([e[4] for e in batch_sample], dtype=torch.bool).to(device)
+#     action_batch = torch.tensor([e[1] for e in batch_sample], dtype=torch.int64).to(
+#         device
+#     )
+
+#     # print (f"state_batch: {state_batch.size()} next_state_batch: {next_state_batch.size()} reward_batch: {reward_batch.size()} done_batch: {done_batch.size()} action_batch: {action_batch.size()}")
+#     q_current = policy.forward(state_batch)
+#     # get the q values for the actions taken
+#     q_current = q_current.gather(1, action_batch.unsqueeze(1)).squeeze(1)
+
+#     with torch.no_grad():
+#         next_q_values = target.forward(next_state_batch).max(1)[0]
+#         next_q_values[done_batch] = 0.0
+
+#     q_target = reward_batch + policy.gamma * next_q_values
+
+#     # print (f"q_current: {q_current.shape} q_target: {q_target.shape}")
+
+#     loss = criterion(q_current, q_target)
+
+#     optimizer.zero_grad()
+#     loss.backward()
+#     optimizer.step()
+
+#     return loss.item()
 
 
 """
@@ -121,7 +164,7 @@ def train(
     merges = []
     for i in range(policy.n_episodes):
         # reset the game
-        print(f"Starting Episode {i}")
+        print(f"Starting Episode {i} with epsilon: {policy.epsilon}")
         game.game_reset()
         # initialize the firat state
         current_state = encode_state(game.matrix).to(device)
@@ -183,7 +226,7 @@ def train(
         if total_steps >= policy.batch_size:
             # print("=========Training the model=========")
             ls = 0
-            cnt = 100
+            cnt = 250
 
             # using tqdm to show the progress bar
             for _ in tqdm.tqdm(range(cnt)):
@@ -194,7 +237,7 @@ def train(
         else:
             print(f"\n\n Episode {i} not trained -- not enough data\n\n")
 
-        if i % 20 == 0 and i != 0:
+        if i % 50 == 0 and i != 0:
             print("\n\n=========Updating target network========= \n")
             update_target_network(target, policy)
             # print(f"Episode: {i} done")
@@ -221,31 +264,24 @@ def Q_run():
     batch_size = 64
     policy = DeepQNetwork(batch_size=batch_size).to(device)
     target = DeepQNetwork(batch_size=batch_size).to(device)
-    policy.lr = 3e-5
-    # optimizer = optim.SGD(model.parameters(), lr=model.lr, momentum=0.9)
+    policy.lr = 1e-6
     optimizer = optim.Adam(policy.parameters(), lr=policy.lr)
     criterion = nn.MSELoss().to(device)
-    # criterion.requires_grad = True
-    n_ep, n_iter = 600 ,500
+    n_ep, n_iter = 800 ,500
     Checkpoint = "DQN_weights"
 
     target.load_state_dict(policy.state_dict())
 
     losses, eps, merges = train(
-        n_ep, n_iter, 50000, game, policy, target, optimizer, criterion
+        n_ep, n_iter, 100000, game, policy, target, optimizer, criterion
     )
 
     if not os.path.isdir("checkpoint"):
         os.mkdir("checkpoint")
 
     print("=======>Saving..")
-    # torch.save({
-    # 'episodes': n_ep ,
-    # 'model_state_dict': policy.state_dict(),
-    # 'optimizer_state_dict': optimizer.state_dict(),
-    # 'loss': criterion,
-    # }, './checkpoint/' + Checkpoint)
-    torch.save(policy.state_dict(), f"checkpoint/policy_net_{n_ep}_2.pth")
+
+    torch.save(policy.state_dict(), f"checkpoint/policy_net_{n_ep}.pth")
 
     # plot the losses
     plot_losses(losses, f"losses_{n_ep}_{policy.lr}")
@@ -374,7 +410,7 @@ if __name__ == "__main__":
     # game = Game2048()
     batch_size = 64
     Q = DeepQNetwork(batch_size=batch_size).to(device)
-    Q.load_state_dict(torch.load("./checkpoint/policy_net_400_2.pth"))
+    Q.load_state_dict(torch.load("./checkpoint/policy_net_600.pth"))
 
     num_trials = 100
     max_val_results = [0] * num_trials

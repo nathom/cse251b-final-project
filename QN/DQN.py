@@ -43,7 +43,7 @@ class DeepQNetwork(nn.Module):
         self.start_epsilon = 0.99
         self.epsilon = 0.99
         self.epsilon_dec = 0.99
-        self.end_epsilon = 0.1
+        self.end_epsilon = 0.05
         self.batch_size = batch_size
         self.steps_done = 0
         # self.optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
@@ -105,7 +105,7 @@ class DeepQNetwork(nn.Module):
         # decrease the epsilon value by a factor of 0.005
         # print (f"epsilon: {self.epsilon}")
         self.epsilon = max(
-            self.end_epsilon, self.start_epsilon * (self.epsilon_dec**self.steps_done)
+            self.end_epsilon, self.epsilon * (self.epsilon_dec)
         )
         # print (f"epsilon: {self.epsilon}")
 
