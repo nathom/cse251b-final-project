@@ -102,38 +102,6 @@ def model_train(policy, target, memory, optimizer, criterion):
 
     return loss.item()
 
-    # loss_value = 0
-    # #iterate over selected experiences in the batch
-    # i = 0
-    # for e in batch_sample:
-    #     #with torch.no_grad():
-    #     q_current = torch.max(policy.forward(e[0]).detach()) #best action based on current state
-    #     q_target = e[3]
-    #     if not e[4]:
-    #         #print(e[2])
-    #         #print(q_temp)
-    #         with torch.no_grad():
-    #             fp = target.forward(e[2])
-    #             best_action = torch.max(fp.detach())
-    #             #print (fp, best_action)
-    #             q_target = q_target + target.gamma*best_action
-    #             # q_target = q_target + model.gamma*torch.max(model.forward(e[2]))
-
-    #     q_target = q_target * 1.0
-    #     print(f"q_current: {q_current} q_target: {q_target}")
-    #     q_target = torch.tensor(q_target, requires_grad=True, dtype=q_current.dtype)
-    #     q_target = q_target.to(device)
-    #     q_current = q_current.to(device)
-
-    #     # print("values :", q_current, q_target)
-    #     loss = criterion(q_current,q_target)
-    #     loss_value += loss.item()
-    #     optimizer.zero_grad()
-    #     loss.backward()
-    #     optimizer.step()
-
-    # print(f"batch  loss {loss_value}")
-
 
 """
 Deep Q-learning with Experience Replay implementation
@@ -182,11 +150,11 @@ def train(
             if not done and torch.eq(current_state, next_state).all():
                 p_cnt += 1
                 reward = (
-                    -30.0
+                    -10.0
                 )  # penalize the model for making a move that does not change the state
-                if p_cnt > 20:
+                if p_cnt > 40:
                     print(
-                        f"Model made {p_cnt -1} invalid moves in a row -- total steps: {ep_steps} -- breaking the episode"
+                        f"Model made {p_cnt -1} invalid moves in a row -- total steps: {ep_steps} -- breaking this {i} episode"
                     )
                     print(f"merge score: {game.merge_score}")
                     print(f"final board pos: \n{game.matrix}")
@@ -200,7 +168,6 @@ def train(
             memory.push(current_state, best_action, next_state, reward, done)
             # phi_t, a_t, r_t, phi_t+1, done
             # Update the explorarion if episode is done
-            policy.update_epsilon()
             current_state = next_state
 
             if done:
@@ -211,6 +178,8 @@ def train(
                 print(f"final board pos: \n{game.matrix}")
                 break
 
+        policy.update_epsilon()
+        
         if total_steps >= policy.batch_size:
             # print("=========Training the model=========")
             ls = 0
@@ -249,15 +218,15 @@ def Q_run():
     print("device: ", device)
 
     game = Game2048()
-    batch_size = 32
+    batch_size = 64
     policy = DeepQNetwork(batch_size=batch_size).to(device)
     target = DeepQNetwork(batch_size=batch_size).to(device)
-    policy.lr = 9e-5
+    policy.lr = 3e-5
     # optimizer = optim.SGD(model.parameters(), lr=model.lr, momentum=0.9)
     optimizer = optim.Adam(policy.parameters(), lr=policy.lr)
     criterion = nn.MSELoss().to(device)
     # criterion.requires_grad = True
-    n_ep, n_iter = 200 ,500
+    n_ep, n_iter = 600 ,500
     Checkpoint = "DQN_weights"
 
     target.load_state_dict(policy.state_dict())
@@ -276,7 +245,7 @@ def Q_run():
     # 'optimizer_state_dict': optimizer.state_dict(),
     # 'loss': criterion,
     # }, './checkpoint/' + Checkpoint)
-    torch.save(target.state_dict(), "checkpoint/target_net.pth")
+    torch.save(policy.state_dict(), f"checkpoint/policy_net_{n_ep}_2.pth")
 
     # plot the losses
     plot_losses(losses, f"losses_{n_ep}_{policy.lr}")
@@ -403,9 +372,9 @@ if __name__ == "__main__":
         Q_run()
 
     # game = Game2048()
-    batch_size = 32
+    batch_size = 64
     Q = DeepQNetwork(batch_size=batch_size).to(device)
-    # Q.load_state_dict(torch.load("./checkpoint/target_net.pth"))
+    Q.load_state_dict(torch.load("./checkpoint/policy_net_400_2.pth"))
 
     num_trials = 100
     max_val_results = [0] * num_trials
@@ -436,12 +405,10 @@ if __name__ == "__main__":
     print()
     print("time taken: ", str(timedelta(seconds=(end_time - start_time))))
 
-    fname =  "DQN" + str(num_trials) + "_trials"
+    fname =  "DQN" + str(num_trials) + "_trials_2"
     title = "DQN"
 
     hist_max_val(max_val_results,fname, title_suf = title)
     #hist_num_merges(num_merge,fname,title_suf = title, bs = 100)
-    hist_merge_scores(total_merge_score, fname, title_suf = title, bs = 2000)
+    hist_merge_scores(total_merge_score, fname, title_suf = title, bs = 500)
     #hist_tiles(tile_array, fname, title_suf = title)
-
-    
